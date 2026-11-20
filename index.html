@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#000">
+    <title>SwitchReader</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<svg aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden;">
+  <defs>
+    <symbol id="i-play" viewBox="0 0 24 24">
+      <polygon points="7,4 20,12 7,20" fill="currentColor"/>
+    </symbol>
+    <symbol id="i-stop" viewBox="0 0 24 24">
+      <rect x="6.5" y="6.5" width="11" height="11" fill="currentColor"/>
+    </symbol>
+    <symbol id="i-home" viewBox="0 0 24 24">
+      <path d="M3.5 11.5L12 4l8.5 7.5M5.5 10v9.5h13V10"
+            fill="none" stroke="currentColor" stroke-width="1.8"
+            stroke-linejoin="round" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="i-gear" viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="2.6" fill="none" stroke="currentColor" stroke-width="1.8"/>
+      <path d="M12 2.5v2.6M12 18.9v2.6M4.6 4.6l1.85 1.85M17.55 17.55l1.85 1.85
+               M2.5 12h2.6M18.9 12h2.6M4.6 19.4l1.85-1.85M17.55 6.45l1.85-1.85"
+            stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24">
+      <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"/>
+    </symbol>
+    <symbol id="i-close" viewBox="0 0 24 24">
+      <path d="M6 6l12 12M18 6l-12 12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"/>
+    </symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24">
+      <path d="M5 7h14M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M6 7l1 12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-12"
+            fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+  </defs>
+</svg>
+
+<!-- ═══════════ HOME SCREEN ═══════════ -->
+<main class="home-screen" id="home-screen">
+    <header class="top-bar">
+        <h1 class="app-title">SwitchReader</h1>
+        <button class="icon-btn" id="home-settings-toggle" title="Settings">
+            <svg width="20" height="20"><use href="#i-gear"/></svg>
+        </button>
+    </header>
+    <section class="library" id="library-list"></section>
+    <button class="add-lesson-button" id="add-lesson-button">
+        <svg width="18" height="18" style="margin-right:8px;"><use href="#i-plus"/></svg>
+        Add lesson
+    </button>
+</main>
+
+<!-- ═══════════ READER SCREEN ═══════════ -->
+<main class="reader" id="reader-screen" hidden>
+    <header class="top-bar">
+        <button class="icon-btn" id="home-button" title="Home">
+            <svg width="20" height="20"><use href="#i-home"/></svg>
+        </button>
+        <button class="icon-btn" id="settings-toggle" title="Settings">
+            <svg width="20" height="20"><use href="#i-gear"/></svg>
+        </button>
+    </header>
+
+    <section class="reading-area">
+        <div id="reading-text"></div>
+    </section>
+
+    <div class="bottom-bar">
+        <span id="page-number">1 / 1</span>
+        <button class="icon-btn play" id="tts-toggle" title="Play">
+            <svg width="22" height="22"><use id="tts-toggle-icon" href="#i-play"/></svg>
+        </button>
+        <span id="mode-label">ES</span>
+    </div>
+</main>
+
+<!-- ═══════════ SETTINGS MODAL ═══════════ -->
+<section id="settings-panel" class="modal" hidden>
+    <div class="modal-header">
+        <h2>Settings</h2>
+        <button class="icon-btn" id="settings-close" title="Close">
+            <svg width="20" height="20"><use href="#i-close"/></svg>
+        </button>
+    </div>
+    <div class="modal-body">
+
+        <div class="setting">
+            <label>
+                <input type="checkbox" id="tts-highlight" checked>
+                Highlight current sentence
+            </label>
+        </div>
+
+        <div class="setting">
+            <label>
+                <input type="checkbox" id="blank-mode-enabled" checked>
+                Enable Blank mode
+            </label>
+        </div>
+
+        <div class="setting">
+            <label>
+                <input type="checkbox" id="tap-starts-tts">
+                Tapping a sentence starts speech
+            </label>
+        </div>
+
+        <div class="setting">
+            <label>
+                <input type="checkbox" id="continue-tts-on-page-turn">
+                Continue speech when changing page
+            </label>
+        </div>
+
+        <div class="setting">
+            <label for="font-size">Font size</label>
+            <input type="range" id="font-size" min="16" max="32" value="22">
+            <span id="font-size-value">22px</span>
+        </div>
+
+        <div class="setting">
+            <label for="line-spacing">Line spacing</label>
+            <input type="range" id="line-spacing" min="100" max="200" value="150" step="5">
+            <span id="line-spacing-value">1.50</span>
+        </div>
+
+        <div class="setting">
+            <label for="tts-speed">Speech speed: <span id="tts-speed-value">1.0×</span></label>
+            <input type="range" id="tts-speed" min="0.5" max="1.5" step="0.1" value="1.0">
+        </div>
+
+        <div class="setting">
+            <label for="tts-voice">Reading voice</label>
+            <select id="tts-voice">
+                <option value="">Automatic (default voice)</option>
+            </select>
+        </div>
+
+    </div>
+</section>
+
+<!-- ═══════════ IMPORT MODAL ═══════════ -->
+<section id="import-panel" class="modal" hidden>
+    <div class="modal-header">
+        <h2>Import lesson</h2>
+        <button class="icon-btn" id="import-close" title="Close">
+            <svg width="20" height="20"><use href="#i-close"/></svg>
+        </button>
+    </div>
+    <div class="modal-body">
+
+        <div class="setting">
+            <label for="l2-language">Original language (L2)</label>
+            <select id="l2-language">
+                <option value="es-ES" selected>Spanish</option>
+                <option value="it-IT">Italian</option>
+                <option value="ru-RU">Russian</option>
+                <option value="ja-JP">Japanese</option>
+                <option value="fr-FR">French</option>
+                <option value="pt-PT">Portuguese (European)</option>
+                <option value="pt-BR">Portuguese (Brazilian)</option>
+            </select>
+        </div>
+
+        <div class="setting">
+            <label for="l1-language">Translation language (L1)</label>
+            <select id="l1-language">
+                <option value="en-GB" selected>English</option>
+                <option value="es-ES">Spanish</option>
+                <option value="it-IT">Italian</option>
+                <option value="ru-RU">Russian</option>
+                <option value="ja-JP">Japanese</option>
+                <option value="fr-FR">French</option>
+                <option value="pt-PT">Portuguese (European)</option>
+                <option value="pt-BR">Portuguese (Brazilian)</option>
+            </select>
+        </div>
+
+        <div class="setting">
+            <label for="import-title">Lesson title</label>
+            <input type="text" id="import-title" placeholder="Defaults to filename">
+        </div>
+
+        <div class="setting">
+            <label>Spreadsheet</label>
+            <label for="excel-file" class="file-picker-label">Choose file</label>
+            <input type="file" id="excel-file" accept=".xlsx,.xls,.csv" hidden>
+            <div id="file-name-display" class="file-name">No file selected</div>
+        </div>
+
+        <button id="import-confirm-button" class="primary-button" disabled>
+            Import lesson
+        </button>
+
+    </div>
+</section>
+
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="app.js"></script>
+
+</body>
+</html>

@@ -1,0 +1,531 @@
+
+/* BASIC PAGE */
+
+* {
+    box-sizing: border-box;
+}
+
+[hidden] {
+    display: none !important;
+}
+
+body {
+    font-family: Georgia, serif;
+    background-color: #000;
+    color: #fff;
+    margin: 0;
+    padding: 0;
+}
+
+/* MAIN READER */
+
+.reader {
+    position: relative;
+    width: 100%;
+    max-width: 850px;
+    height: 100vh;
+    height: 100svh;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* MODALS (settings, import) */
+
+.modal {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    background: #0a0a0a;
+    display: flex;
+    flex-direction: column;
+    font-family: Arial, sans-serif;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 16px;
+    min-height: 52px;
+    border-bottom: 1px solid #1a1a1a;
+    flex-shrink: 0;
+}
+
+.modal-header h2 {
+    font-size: 16px;
+    font-weight: 500;
+    margin: 0;
+    color: #ddd;
+}
+
+.modal-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+    -webkit-overflow-scrolling: touch;
+}
+
+.setting {
+    margin-bottom: 20px;
+}
+
+.setting label {
+    display: block;
+    font-size: 13px;
+    color: #bbb;
+    margin-bottom: 8px;
+}
+
+.setting input[type="range"] {
+    width: 100%;
+}
+
+.setting input[type="checkbox"] {
+    margin-right: 8px;
+    vertical-align: middle;
+}
+
+.setting input[type="text"] {
+    width: 100%;
+    padding: 10px;
+    background: #222;
+    color: #eee;
+    border: 1px solid #444;
+    border-radius: 5px;
+    font-size: 14px;
+    font-family: Arial, sans-serif;
+}
+
+.setting span {
+    display: block;
+    text-align: right;
+    font-size: 12px;
+    color: #888;
+    margin-top: 5px;
+}
+
+.setting select {
+    width: 100%;
+    padding: 9px;
+    background: #222;
+    color: #eee;
+    border: 1px solid #444;
+    border-radius: 5px;
+    font-size: 13px;
+}
+
+/* File picker */
+
+.file-picker-label {
+    display: inline-block;
+    padding: 10px 16px;
+    background: #222;
+    color: #ccc;
+    border: 1px solid #444;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 13px;
+    margin-bottom: 0;
+    margin-top: 4px;
+}
+
+.file-picker-label:hover {
+    background: #2a2a2a;
+}
+
+.file-name {
+    font-size: 12px;
+    color: #777;
+    margin-top: 8px;
+    word-break: break-all;
+}
+
+/* Primary button */
+
+.primary-button {
+    display: block;
+    width: 100%;
+    padding: 14px;
+    font-size: 14px;
+    font-weight: 500;
+    background: #2a2a2a;
+    color: #fff;
+    border: 1px solid #444;
+    border-radius: 8px;
+    cursor: pointer;
+    margin-top: 20px;
+    font-family: Arial, sans-serif;
+}
+
+.primary-button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.primary-button:hover:not(:disabled) {
+    background: #333;
+}
+
+/* READING AREA */
+
+.reading-area {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 25px 30px;
+    touch-action: none;
+}
+
+/* BOOK TEXT */
+
+#reading-text {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    font-size: 22px;
+    line-height: 1.85;
+    font-weight: normal;
+    overflow-wrap: break-word;
+}
+
+#reading-text p {
+    margin: 0 0 0.8em 0;
+}
+
+/* LANGUAGE MODE BUTTON */
+
+#language-toggle {
+    display: block;
+    margin: 20px auto 15px;
+    padding: 10px 22px;
+    font-size: 13px;
+    cursor: pointer;
+    background: #222;
+    color: #ccc;
+    border: 1px solid #444;
+    border-radius: 5px;
+}
+
+/* SMALLER SCREENS */
+
+@media (max-width: 600px) {
+
+    .reader {
+        max-width: none;
+    }
+
+    .reading-area {
+        padding: 25px 24px;
+    }
+
+    #reading-text {
+        font-size: 21px;
+        line-height: 1.8;
+    }
+
+}
+
+/* SETTINGS PANEL */
+
+#settings-panel {
+    position: absolute;
+    top: 52px;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 10;
+    overflow-y: auto;
+
+    margin: 0;
+    padding: 20px;
+    background-color: #181818;
+    border-top: 1px solid #333;
+    font-family: Arial, sans-serif;
+}
+
+#settings-panel[hidden] {
+    display: none;
+}
+
+#settings-panel h2 {
+    font-size: 16px;
+    font-weight: normal;
+    margin: 0 0 20px;
+    padding-right: 80px;
+    color: #ddd;
+}
+
+#settings-close {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    background: transparent;
+    border: 1px solid #444;
+    color: #ccc;
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: pointer;
+    font-family: Arial, sans-serif;
+}
+
+.setting {
+    margin-bottom: 20px;
+}
+
+.setting label {
+    display: block;
+    font-size: 13px;
+    color: #bbb;
+    margin-bottom: 8px;
+}
+
+.setting input[type="range"] {
+    width: 100%;
+}
+
+.setting input[type="checkbox"] {
+    margin-right: 8px;
+    vertical-align: middle;
+}
+
+.setting span {
+    display: block;
+    text-align: right;
+    font-size: 12px;
+    color: #888;
+    margin-top: 5px;
+}
+
+.setting select {
+    width: 100%;
+    padding: 9px;
+    background: #222;
+    color: #eee;
+    border: 1px solid #444;
+    border-radius: 5px;
+    font-size: 13px;
+}
+
+#settings-panel[hidden] {
+    display: none;
+}
+
+
+/* Current sentence being read aloud */
+#reading-text p.tts-current-sentence {
+    background-color: #383838;
+    border-radius: 4px;
+    padding: 0 6px;
+    margin-left: -6px;
+    margin-right: -6px;
+}
+
+/* TOP BAR */
+
+.top-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 14px;
+    min-height: 52px;
+    border-bottom: 1px solid #141414;
+    font-family: Arial, sans-serif;
+    flex-shrink: 0;
+}
+
+/* BOTTOM BAR */
+
+.bottom-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 14px;
+    min-height: 56px;
+    font-family: Arial, sans-serif;
+    font-size: 12px;
+    color: #aaa;
+    flex-shrink: 0;
+}
+
+/* ICON BUTTONS */
+
+.icon-btn {
+    background: transparent;
+    border: none;
+    color: #ccc;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+}
+
+.icon-btn:hover,
+.icon-btn:active {
+    background: #1a1a1a;
+}
+
+.icon-btn.play {
+    width: 48px;
+    height: 48px;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.icon-btn.play:hover,
+.icon-btn.play:active {
+    background: rgba(255, 255, 255, 0.09);
+}
+
+/* PAGE + MODE */
+
+#page-number {
+    font-family: Arial, sans-serif;
+    font-size: 12px;
+    color: #777;
+    padding: 0 4px;
+    min-width: 40px;
+}
+
+#mode-label {
+    font-family: Arial, sans-serif;
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    color: #888;
+    cursor: pointer;
+    padding: 8px 12px;
+    border-radius: 4px;
+    min-width: 40px;
+    text-align: right;
+    user-select: none;
+}
+
+#mode-label:hover {
+    background: #1a1a1a;
+}
+
+#mode-label.blank {
+    color: #444;
+}
+
+/* HOME SCREEN */
+
+.home-screen {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 850px;
+    height: 100vh;
+    height: 100svh;
+    margin: 0 auto;
+    overflow: hidden;
+    font-family: Arial, sans-serif;
+}
+
+.app-title {
+    font-size: 16px;
+    font-weight: 500;
+    margin: 0;
+    color: #ddd;
+}
+
+.library {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    -webkit-overflow-scrolling: touch;
+}
+
+.lesson-row {
+    display: flex;
+    align-items: stretch;
+    background: #141414;
+    border: 1px solid #222;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.lesson-open {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: inherit;
+    text-align: left;
+    padding: 14px 16px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: inherit;
+    min-width: 0;
+}
+
+.lesson-open:hover {
+    background: #1a1a1a;
+}
+
+.lesson-title {
+    font-size: 15px;
+    color: #ddd;
+    margin-bottom: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.lesson-meta {
+    font-size: 12px;
+    color: #666;
+    letter-spacing: 0.3px;
+}
+
+.lesson-delete {
+    background: transparent;
+    border: none;
+    border-left: 1px solid #222;
+    color: #555;
+    cursor: pointer;
+    padding: 8px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.lesson-delete:hover {
+    color: #e55;
+    background: #1e1414;
+}
+
+.add-lesson-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 12px 16px 16px;
+    padding: 14px;
+    background: #222;
+    color: #ddd;
+    border: 1px solid #444;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    font-family: Arial, sans-serif;
+}
+
+.add-lesson-button:hover {
+    background: #2a2a2a;
+}
+
+.empty-state {
+    color: #555;
+    text-align: center;
+    padding: 60px 20px;
+    font-size: 14px;
+    line-height: 1.6;
+}
