@@ -529,3 +529,161 @@ body {
     font-size: 14px;
     line-height: 1.6;
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   SETTINGS PANEL — A3 card layout
+   ═══════════════════════════════════════════════════════════════ */
+
+#settings-panel .modal-body {
+    padding: 16px;
+}
+
+.card-section {
+    background: #131313;
+    border: 1px solid #1f1f1f;
+    border-radius: 12px;
+    padding: 4px 16px 8px;
+    margin-bottom: 14px;
+}
+
+.card-section .section-header {
+    font-size: 11px;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    font-weight: bold;
+    margin: 12px 0 4px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #1f1f1f;
+}
+
+/* Toggle rows (contain a switch) */
+
+.toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 14px 0;
+    border-bottom: 1px solid #1a1a1a;
+    cursor: pointer;
+    margin: 0;
+}
+
+.toggle-row:last-child {
+    border-bottom: none;
+}
+
+.toggle-label {
+    flex: 1;
+    min-width: 0;
+}
+
+.toggle-title {
+    color: #ddd;
+    font-size: 14px;
+    line-height: 1.4;
+}
+
+.toggle-hint {
+    color: #666;
+    font-size: 11px;
+    line-height: 1.4;
+    margin-top: 4px;
+}
+
+/* iOS-style switch */
+
+.switch {
+    appearance: none;
+    -webkit-appearance: none;
+    position: relative;
+    width: 44px;
+    height: 26px;
+    background: #2e2e2e;
+    border-radius: 13px;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background 0.2s;
+    margin: 0;
+    border: none;
+}
+
+.switch::before {
+    content: '';
+    position: absolute;
+    width: 22px;
+    height: 22px;
+    background: #6b6b6b;
+    border-radius: 50%;
+    top: 2px;
+    left: 2px;
+    transition: left 0.2s, background 0.2s;
+}
+
+.switch:checked {
+    background: #64748b;
+}
+
+.switch:checked::before {
+    left: 20px;
+    background: #fff;
+}
+
+/* Slider rows */
+
+.slider-row {
+    padding: 14px 0;
+    border-bottom: 1px solid #1a1a1a;
+}
+
+.slider-row:last-child {
+    border-bottom: none;
+}
+
+.slider-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 12px;
+}
+
+.slider-label {
+    color: #ddd;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.slider-value {
+    color: #888;
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Select rows (voice picker) */
+
+.select-row {
+    padding: 14px 0;
+    border-bottom: 1px solid #1a1a1a;
+}
+
+.select-row:last-child {
+    border-bottom: none;
+}
+
+.select-row label {
+    display: block;
+    cursor: pointer;
+    margin-bottom: 8px;
+}
+
+.select-row select {
+    width: 100%;
+    padding: 10px;
+    background: #1a1a1a;
+    color: #ddd;
+    border: 1px solid #2a2a2a;
+    border-radius: 6px;
+    font-size: 13px;
+    font-family: inherit;
+}
