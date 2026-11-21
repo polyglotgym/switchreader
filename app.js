@@ -845,10 +845,9 @@ function jumpToSentence(index) {
     const wasPlaying = isSpeaking && !ttsStopped;
     const isCurrent = (index === currentSentenceIndex);
 
-    // ── Toggle OFF: taps never start or stop playback by themselves ──
+    // ── Toggle OFF ──
     if (!tapStartsTts) {
         if (wasPlaying && !isCurrent) {
-            // TTS playing + tap different sentence -> jump audio there
             ttsSessionId++;
             window.speechSynthesis.cancel();
             currentUtterance = null;
@@ -864,7 +863,6 @@ function jumpToSentence(index) {
                 speakNextSentence();
             }, 100);
         } else if (!isCurrent) {
-            // Stopped + tap different sentence -> move highlight only
             ttsSessionId++;
             window.speechSynthesis.cancel();
             currentUtterance = null;
@@ -880,7 +878,6 @@ function jumpToSentence(index) {
 
     // ── Toggle ON ──
     if (wasPlaying && isCurrent) {
-        // Tap current playing sentence -> stop
         ttsStopped = true;
         window.speechSynthesis.cancel();
         isSpeaking = false;
@@ -888,9 +885,16 @@ function jumpToSentence(index) {
         return;
     }
 
-    // Everything else: (re)start from tapped sentence
+    // Everything else: start from tapped sentence
     ttsSessionId++;
-    window.speechSynthesis.cancel();
+    
+    // ONLY cancel if we were actively playing. 
+    // If we are paused or idle, the queue is already clear, and 
+    // calling cancel() causes Android Chrome to swallow the speak() command.
+    if (wasPlaying) {
+        window.speechSynthesis.cancel();
+    }
+
     currentUtterance = null;
     currentSentenceIndex = index;
     ttsPage = currentPage;
@@ -902,13 +906,13 @@ function jumpToSentence(index) {
     const sessionId = ttsSessionId;
 
     if (wasPlaying) {
-        // Let the browser finish cancelling the old utterance
+        // If we had to cancel active audio, wait for the engine to clear
         setTimeout(function() {
             if (sessionId !== ttsSessionId || !isSpeaking || ttsStopped) return;
             speakNextSentence();
         }, 100);
     } else {
-        // Start synchronously to preserve the mobile user-gesture context
+        // If it was already stopped, start immediately to keep the tap gesture
         speakNextSentence();
     }
 }
