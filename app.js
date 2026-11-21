@@ -846,13 +846,9 @@ function jumpToSentence(index) {
     const isCurrent = (index === currentSentenceIndex);
 
     // ── Toggle OFF: taps never start or stop playback by themselves ──
-    // The only action is: TTS is playing and you tap a *different*
-    // sentence — that restarts audio there (option B). Everything else
-    // is passive.
     if (!tapStartsTts) {
-
         if (wasPlaying && !isCurrent) {
-
+            // TTS playing + tap different sentence -> jump audio there
             ttsSessionId++;
             window.speechSynthesis.cancel();
             currentUtterance = null;
@@ -867,10 +863,8 @@ function jumpToSentence(index) {
                 if (sessionId !== ttsSessionId || !isSpeaking || ttsStopped) return;
                 speakNextSentence();
             }, 100);
-
         } else if (!isCurrent) {
-
-            // Stopped/paused + tap different: move highlight, reset to idle.
+            // Stopped + tap different sentence -> move highlight only
             ttsSessionId++;
             window.speechSynthesis.cancel();
             currentUtterance = null;
@@ -880,16 +874,13 @@ function jumpToSentence(index) {
             isSpeaking = false;
             ttsStopped = false;
             setTtsButtonState("play");
-
         }
-        // Tapped the current sentence, any state → no-op.
         return;
     }
 
     // ── Toggle ON ──
-
     if (wasPlaying && isCurrent) {
-        // Tap the sentence that's playing → stop, leaving the highlight.
+        // Tap current playing sentence -> stop
         ttsStopped = true;
         window.speechSynthesis.cancel();
         isSpeaking = false;
@@ -897,24 +888,29 @@ function jumpToSentence(index) {
         return;
     }
 
-    // Everything else: (re)start from the tapped sentence.
-    //   wasPlaying + different   → jump audio to new sentence (option B)
-    //   !wasPlaying + current    → tap again to restart
-    //   !wasPlaying + different  → start playback from new sentence
+    // Everything else: (re)start from tapped sentence
     ttsSessionId++;
     window.speechSynthesis.cancel();
     currentUtterance = null;
     currentSentenceIndex = index;
     ttsPage = currentPage;
     displayPage();
+    
     isSpeaking = true;
     ttsStopped = false;
     setTtsButtonState("stop");
     const sessionId = ttsSessionId;
-    setTimeout(function() {
-        if (sessionId !== ttsSessionId || !isSpeaking || ttsStopped) return;
+
+    if (wasPlaying) {
+        // Let the browser finish cancelling the old utterance
+        setTimeout(function() {
+            if (sessionId !== ttsSessionId || !isSpeaking || ttsStopped) return;
+            speakNextSentence();
+        }, 100);
+    } else {
+        // Start synchronously to preserve the mobile user-gesture context
         speakNextSentence();
-    }, 100);
+    }
 }
 
 function speakNextSentence() {
