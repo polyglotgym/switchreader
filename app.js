@@ -101,7 +101,6 @@ const homeSettingsToggle = document.getElementById("home-settings-toggle");
 const homeButton = document.getElementById("home-button");
 const settingsToggle = document.getElementById("settings-toggle");
 const settingsPanel = document.getElementById("settings-panel");
-const settingsClose = document.getElementById("settings-close");
 
 const importPanel = document.getElementById("import-panel");
 const importClose = document.getElementById("import-close");
@@ -136,18 +135,40 @@ const lineSpacingValue = document.getElementById("line-spacing-value");
 // Font size
 const savedFontSize = localStorage.getItem("switchreader-font-size");
 if (savedFontSize !== null) fontSizeSlider.value = savedFontSize;
-fontSizeSlider.dispatchEvent(new Event("input"));
+
 fontSizeSlider.addEventListener("input", function() {
-    localStorage.setItem("switchreader-font-size", fontSizeSlider.value);
+    const size = fontSizeSlider.value;
+    readingArea.style.fontSize = size + "px";
+    fontSizeValue.textContent = size + "px";
+    localStorage.setItem("switchreader-font-size", size);
+    
+    if (!readerScreen.hidden) {
+        paginateReadingUnits();
+        displayPage();
+    }
 });
+
+// Initialize the style immediately on load
+fontSizeSlider.dispatchEvent(new Event("input"));
 
 // Line spacing
 const savedLineSpacing = localStorage.getItem("switchreader-line-spacing");
 if (savedLineSpacing !== null) lineSpacingSlider.value = savedLineSpacing;
-lineSpacingSlider.dispatchEvent(new Event("input"));
+
 lineSpacingSlider.addEventListener("input", function() {
+    const spacing = lineSpacingSlider.value / 100;
+    readingArea.style.lineHeight = spacing;
+    lineSpacingValue.textContent = spacing.toFixed(2);
     localStorage.setItem("switchreader-line-spacing", lineSpacingSlider.value);
+
+    if (!readerScreen.hidden) {
+        paginateReadingUnits();
+        displayPage();
+    }
 });
+
+// Initialize the style immediately on load
+lineSpacingSlider.dispatchEvent(new Event("input"));
 
 // Highlight
 let ttsHighlightEnabled = localStorage.getItem("ttsHighlightEnabled") !== "false";
@@ -286,19 +307,18 @@ function closeAllModals() {
     importPanel.hidden = true;
 }
 
-homeSettingsToggle.addEventListener("click", function() {
-    closeAllModals();
-    settingsPanel.hidden = false;
-});
+function toggleSettings() {
+    // If it's already open, close it. Otherwise, open it and close import.
+    if (!settingsPanel.hidden) {
+        settingsPanel.hidden = true;
+    } else {
+        settingsPanel.hidden = false;
+        importPanel.hidden = true;
+    }
+}
 
-settingsToggle.addEventListener("click", function() {
-    closeAllModals();
-    settingsPanel.hidden = false;
-});
-
-settingsClose.addEventListener("click", function() {
-    settingsPanel.hidden = true;
-});
+homeSettingsToggle.addEventListener("click", toggleSettings);
+settingsToggle.addEventListener("click", toggleSettings);
 
 // ═══════════════════════════════════════════════════════════════
 //  LIBRARY RENDERING

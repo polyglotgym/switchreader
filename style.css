@@ -67,6 +67,11 @@ body {
     -webkit-overflow-scrolling: touch;
 }
 
+/* Keep settings panel below the top bar */
+#settings-panel {
+    top: 52px; 
+}
+
 .setting {
     margin-bottom: 20px;
 }
@@ -536,7 +541,7 @@ body {
    ═══════════════════════════════════════════════════════════════ */
 
 #settings-panel .modal-body {
-    padding: 16px;
+    padding: 8px 16px 16px 16px;
 }
 
 .card-section {
