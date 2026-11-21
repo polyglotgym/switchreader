@@ -898,7 +898,6 @@ function jumpToSentence(index) {
     currentUtterance = null;
     currentSentenceIndex = index;
     ttsPage = currentPage;
-    displayPage();
     
     isSpeaking = true;
     ttsStopped = false;
@@ -968,7 +967,11 @@ function speakNextSentence() {
         setTtsButtonState("play");
     };
 
+    // Call speak FIRST to preserve the user gesture window on Android
     window.speechSynthesis.speak(currentUtterance);
+
+    // THEN update the UI
+    if (displayMode !== 0) displayPage();
 }
 
 ttsButton.addEventListener("click", function() {
