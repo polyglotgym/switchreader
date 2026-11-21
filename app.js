@@ -791,10 +791,34 @@ function setTtsButtonState(state) {
     }
 }
 
+// Optional on-screen log for phones: open the app with ?debug in the URL.
+const TTS_DEBUG = new URLSearchParams(location.search).has("debug");
+function ttsLog(message) {
+    console.log("[tts]", message);
+    if (!TTS_DEBUG) return;
+    let box = document.getElementById("tts-debug");
+    if (!box) {
+        box = document.createElement("pre");
+        box.id = "tts-debug";
+        box.style.cssText = "position:fixed;left:0;right:0;bottom:64px;margin:0;" +
+            "padding:4px 8px;font:11px monospace;color:#0f0;background:rgba(0,0,0,.8);" +
+            "z-index:999;pointer-events:none;white-space:pre-wrap;";
+        document.body.appendChild(box);
+    }
+    box.textContent = (box.textContent + "\n" + message).split("\n").slice(-8).join("\n");
+}
+
+// Invalidate the current session and silence the engine.
+// cancel() is only called when the engine is actually busy: on Android
+// Chrome an idle cancel() can swallow the next speak().
 function cancelSpeech() {
     ttsSessionId++;
-    window.speechSynthesis.cancel();
     currentUtterance = null;
+    const synth = window.speechSynthesis;
+    if (synth.speaking || synth.pending) {
+        ttsLog("cancel()");
+        synth.cancel();
+    }
 }
 
 function stopTts(isPaused = true) {
@@ -805,15 +829,30 @@ function stopTts(isPaused = true) {
 }
 
 function startTts() {
-    cancelSpeech();
+    const synth = window.speechSynthesis;
+    const wasBusy = synth.speaking || synth.pending;
+
+    cancelSpeech();                       // bumps the session id
+    const sessionId = ttsSessionId;
+
     isSpeaking = true;
     ttsStopped = false;
     setTtsButtonState("stop");
     ttsPage = currentPage;
-    speakNextSentence();
+
+    if (wasBusy) {
+        // We just cancelled live audio: give the engine a moment to clear.
+        setTimeout(function() {
+            if (sessionId !== ttsSessionId || !isSpeaking || ttsStopped) return;
+            speakNextSentence();
+        }, 120);
+    } else {
+        // Engine idle: speak straight away, inside the tap gesture.
+        speakNextSentence();
+    }
 }
 
-function speakNextSentence() {
+function speakNextSentence(attempt = 0) {
 
     const sessionId = ttsSessionId;
     const sentences = pages[currentPage].l2;
@@ -836,49 +875,64 @@ function speakNextSentence() {
         return;
     }
 
-    currentUtterance = new SpeechSynthesisUtterance(sentences[currentSentenceIndex]);
+    const utterance = new SpeechSynthesisUtterance(sentences[currentSentenceIndex]);
+    currentUtterance = utterance;
+    let started = false;
 
-    // REMOVED the synchronous displayPage() from here!
-
-    currentUtterance.lang = currentBook ? currentBook.l2Code : "en-GB";
+    utterance.lang = currentBook ? currentBook.l2Code : "en-GB";
 
     if (selectedTtsVoiceURI) {
         const selectedVoice = availableTtsVoices.find(
             voice => voice.voiceURI === selectedTtsVoiceURI
         );
-        if (selectedVoice) currentUtterance.voice = selectedVoice;
+        if (selectedVoice) utterance.voice = selectedVoice;
     }
 
-    currentUtterance.rate = ttsSpeed;
+    utterance.rate = ttsSpeed;
 
-    currentUtterance.onstart = function() {
-        if (sessionId === ttsSessionId) {
-            ttsRetried = false;
-            // Update the UI exactly when the audio begins
-            if (displayMode !== 0) displayPage();
-        }
+    // True only while this exact utterance is the live one. Late events
+    // from cancelled/retired utterances fail this check and are ignored.
+    function isLive() {
+        return !ttsStopped &&
+               sessionId === ttsSessionId &&
+               utterance === currentUtterance;
+    }
+
+    // Re-issue the same sentence (max 2 retries). Returns true if scheduled.
+    function retry(reason) {
+        if (attempt >= 2) return false;
+        ttsLog("retry " + (attempt + 1) + " (" + reason + ")");
+        currentUtterance = null;                 // retire this utterance
+        const synth = window.speechSynthesis;
+        if (synth.speaking || synth.pending) synth.cancel();
+        setTimeout(function() {
+            if (sessionId !== ttsSessionId || ttsStopped || !isSpeaking) return;
+            speakNextSentence(attempt + 1);
+        }, 200);
+        return true;
+    }
+
+    utterance.onstart = function() {
+        if (!isLive()) return;
+        started = true;
+        ttsLog("start");
     };
 
-    currentUtterance.onend = function() {
-        if (ttsStopped || sessionId !== ttsSessionId) return;
+    utterance.onend = function() {
+        if (!isLive()) return;
+        ttsLog("end");
         currentSentenceIndex++;
         speakNextSentence();
     };
 
-    currentUtterance.onerror = function(event) {
-        if (ttsStopped || sessionId !== ttsSessionId) return;
-        console.warn("TTS error:", event.error);
+    utterance.onerror = function(event) {
+        if (!isLive()) return;
+        ttsLog("error: " + event.error);
 
-        // Some engines (notably Android Chrome) fail the first utterance
-        // after a cancel() with "interrupted"/"canceled". Retry once.
-        if ((event.error === "interrupted" || event.error === "canceled") && !ttsRetried) {
-            ttsRetried = true;
-            setTimeout(function() {
-                if (sessionId !== ttsSessionId || ttsStopped || !isSpeaking) return;
-                speakNextSentence();
-            }, 150);
-            return;
-        }
+        // Android Chrome can fail the first utterance after a cancel()
+        // with "interrupted"/"canceled". Try again before giving up.
+        if ((event.error === "interrupted" || event.error === "canceled") &&
+            retry(event.error)) return;
 
         isSpeaking = false;
         currentUtterance = null;
@@ -886,9 +940,19 @@ function speakNextSentence() {
     };
 
     // Call speak FIRST to preserve the user gesture window on Android
-    window.speechSynthesis.speak(currentUtterance);
-    
-    // REMOVED the second synchronous displayPage() from here too!
+    ttsLog("speak (attempt " + attempt + ")");
+    window.speechSynthesis.speak(utterance);
+
+    // THEN update the UI (once per sentence)
+    if (displayMode !== 0) displayPage();
+
+    // Watchdog: some engines drop the utterance without any event at all.
+    setTimeout(function() {
+        if (!isLive() || started) return;
+        const synth = window.speechSynthesis;
+        if (synth.speaking && !synth.pending) return;   // audio is playing anyway
+        retry("no start");
+    }, 700);
 }
 
 // ═══════════════════════════════════════════════════════════════
