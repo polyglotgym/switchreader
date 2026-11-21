@@ -2,7 +2,7 @@
 //  SWITCHREADER — parallel-text lesson reader
 // ═══════════════════════════════════════════════════════════════
 
-const APP_BUILD = "2026-11-21c";   // shown at the bottom of Settings: tells you which build is running
+const APP_BUILD = "2026-11-21d";   // shown at the bottom of Settings: tells you which build is running
 
 const languageNames = {
     "en-GB": "English",
@@ -1161,6 +1161,17 @@ readingAreaSection.addEventListener("pointerup", function(event) {
 
 readingAreaSection.addEventListener("pointercancel", function() {
     isTrackingSwipe = false;
+});
+
+// Don't let Chrome select words in the reader. This also stops the
+// "Tap to search" prompt, which is triggered by that selection.
+document.addEventListener("selectstart", function(event) {
+    const node = event.target.nodeType === 1 ? event.target : event.target.parentElement;
+    if (node && node.closest(".reading-area")) event.preventDefault();
+});
+
+readingAreaSection.addEventListener("contextmenu", function(event) {
+    event.preventDefault();   // long-press menu
 });
 
 // Tapping anywhere in the reading area counts. A tap on (or just beside) a
