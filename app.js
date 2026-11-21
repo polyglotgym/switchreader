@@ -940,9 +940,6 @@ function speakNextSentence() {
     }
 
     currentUtterance = new SpeechSynthesisUtterance(sentences[currentSentenceIndex]);
-
-    if (displayMode !== 0) displayPage();
-
     currentUtterance.lang = currentBook ? currentBook.l2Code : "en-GB";
 
     if (selectedTtsVoiceURI) {
@@ -967,48 +964,15 @@ function speakNextSentence() {
         setTtsButtonState("play");
     };
 
-    // Call speak FIRST to preserve the user gesture window on Android
+    // 1. Fire the audio synchronously (preserves the tap gesture)
+    window.speechSynthesis.resume(); // Ensures Chrome's engine isn't stuck paused
     window.speechSynthesis.speak(currentUtterance);
 
-    // THEN update the UI
-    if (displayMode !== 0) displayPage();
+    // 2. Update the UI on the NEXT tick (so we don't destroy the DOM too early)
+    if (displayMode !== 0) {
+        setTimeout(function() { displayPage(); }, 0);
+    }
 }
-
-ttsButton.addEventListener("click", function() {
-
-    if (!currentLessonId || pages.length === 0) return;
-
-    if (!("speechSynthesis" in window)) {
-        alert("Text-to-speech is not supported by this browser.");
-        return;
-    }
-
-    if (isSpeaking && !ttsStopped) {
-        ttsStopped = true;
-        window.speechSynthesis.cancel();
-        isSpeaking = false;
-        setTtsButtonState("continue");
-        return;
-    }
-
-    if (ttsStopped) {
-        ttsStopped = false;
-        isSpeaking = true;
-        setTtsButtonState("stop");
-        if (ttsPage !== currentPage) {
-            currentSentenceIndex = 0;
-            ttsPage = currentPage;
-        }
-        speakNextSentence();
-        return;
-    }
-
-    ttsPage = currentPage;
-    ttsStopped = false;
-    isSpeaking = true;
-    setTtsButtonState("stop");
-    speakNextSentence();
-});
 
 // ═══════════════════════════════════════════════════════════════
 //  INPUT — SWIPE AND TAP
