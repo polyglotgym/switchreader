@@ -448,15 +448,11 @@ function openLesson(lessonId) {
 }
 
 function goHome() {
-    // Stop any active speech before leaving the reader.
-    ttsSessionId++;
-    window.speechSynthesis.cancel();
+    cancelSpeech();
     isSpeaking = false;
     ttsStopped = false;
-    currentUtterance = null;
-    ttsPage = -1;
     setTtsButtonState("play");
-
+    
     saveCurrentPosition();
     currentLessonId = null;
     currentBook = null;
@@ -771,6 +767,10 @@ function cycleDisplayMode(direction) {
 //  TTS ENGINE
 // ═══════════════════════════════════════════════════════════════
 
+// ═══════════════════════════════════════════════════════════════
+//  TTS ENGINE & STATE MACHINE
+// ═══════════════════════════════════════════════════════════════
+
 let isSpeaking = false;
 let currentUtterance = null;
 let currentSentenceIndex = 0;
@@ -791,27 +791,128 @@ function setTtsButtonState(state) {
     }
 }
 
-function restartTtsFromCurrentPosition() {
-    const wasSpeaking = isSpeaking && !ttsStopped;
-
+function cancelSpeech() {
     ttsSessionId++;
     window.speechSynthesis.cancel();
-    ttsPage = currentPage;
-    displayPage();
+    currentUtterance = null;
+}
 
-    if (wasSpeaking) {
-        isSpeaking = true;
-        ttsStopped = false;
-        setTtsButtonState("stop");
-        const sessionId = ttsSessionId;
-        setTimeout(function() {
-            if (sessionId !== ttsSessionId || !isSpeaking || ttsStopped) return;
+function stopTts(isPaused = true) {
+    cancelSpeech();
+    isSpeaking = false;
+    ttsStopped = isPaused;
+    setTtsButtonState(isPaused ? "continue" : "play");
+}
+
+function startTts() {
+    cancelSpeech();
+    isSpeaking = true;
+    ttsStopped = false;
+    setTtsButtonState("stop");
+    ttsPage = currentPage;
+    speakNextSentence();
+}
+
+function speakNextSentence() {
+    const sessionId = ttsSessionId;
+    const sentences = pages[currentPage].l2;
+
+    if (currentSentenceIndex >= sentences.length) {
+        if (currentPage < pages.length - 1) {
+            currentPage++;
+            currentSentenceIndex = 0;
+            ttsPage = currentPage;
+            displayPage();
             speakNextSentence();
-        }, 100);
+            return;
+        }
+        currentSentenceIndex = sentences.length - 1;
+        stopTts(false);
+        return;
+    }
+
+    currentUtterance = new SpeechSynthesisUtterance(sentences[currentSentenceIndex]);
+    currentUtterance.lang = currentBook ? currentBook.l2Code : "en-GB";
+
+    if (selectedTtsVoiceURI) {
+        const selectedVoice = availableTtsVoices.find(
+            voice => voice.voiceURI === selectedTtsVoiceURI
+        );
+        if (selectedVoice) currentUtterance.voice = selectedVoice;
+    }
+
+    currentUtterance.rate = ttsSpeed;
+
+    currentUtterance.onend = function() {
+        if (ttsStopped || sessionId !== ttsSessionId) return;
+        currentSentenceIndex++;
+        speakNextSentence();
+    };
+
+    currentUtterance.onerror = function(event) {
+        if (ttsStopped || sessionId !== ttsSessionId) return;
+
+        // Chrome bug: if we try to speak immediately after cancel(), it throws 
+        // "interrupted" or "canceled". We retry once after a 150ms delay.
+        if (event.error === 'interrupted' || event.error === 'canceled') {
+            if (!currentUtterance._retried) {
+                currentUtterance._retried = true;
+                setTimeout(function() {
+                    if (ttsStopped || sessionId !== ttsSessionId) return;
+                    window.speechSynthesis.speak(currentUtterance);
+                }, 150);
+                return;
+            }
+        }
+
+        // Real error
+        console.warn("TTS Error:", event.error);
+        isSpeaking = false;
+        ttsStopped = false;
+        currentUtterance = null;
+        setTtsButtonState("play");
+    };
+
+    window.speechSynthesis.speak(currentUtterance);
+
+    if (displayMode !== 0) {
+        setTimeout(function() { displayPage(); }, 0);
     }
 }
 
+// ═══════════════════════════════════════════════════════════════
+//  NAVIGATION HELPERS
+// ═══════════════════════════════════════════════════════════════
+
+function changePageWithTts(changeFn) {
+    const wasPlaying = isSpeaking && !ttsStopped;
+    
+    cancelSpeech();
+    changeFn();
+    currentSentenceIndex = 0;
+    ttsPage = currentPage;
+
+    if (wasPlaying && continueTtsOnPageTurn) {
+        startTts();
+    } else {
+        isSpeaking = false;
+        ttsStopped = false;
+        setTtsButtonState("play");
+        displayPage();
+    }
+}
+
+function goToPreviousPage() {
+    if (currentPage > 0) changePageWithTts(function() { currentPage--; });
+}
+
+function goToNextPage() {
+    if (currentPage < pages.length - 1) changePageWithTts(function() { currentPage++; });
+}
+
 function moveToSentence(direction) {
+    const wasPlaying = isSpeaking && !ttsStopped;
+    
     currentSentenceIndex += direction;
 
     if (currentSentenceIndex < 0) {
@@ -834,145 +935,66 @@ function moveToSentence(direction) {
         }
     }
 
-    restartTtsFromCurrentPosition();
+    if (wasPlaying) {
+        startTts();
+    } else {
+        cancelSpeech();
+        isSpeaking = false;
+        ttsStopped = false;
+        setTtsButtonState("play");
+        displayPage();
+    }
 }
 
 function jumpToSentence(index) {
-
     if (!pages[currentPage]) return;
     if (index < 0 || index >= pages[currentPage].l2.length) return;
 
     const wasPlaying = isSpeaking && !ttsStopped;
     const isCurrent = (index === currentSentenceIndex);
 
-    // ── Toggle OFF ──
     if (!tapStartsTts) {
         if (wasPlaying && !isCurrent) {
-            ttsSessionId++;
-            window.speechSynthesis.cancel();
-            currentUtterance = null;
             currentSentenceIndex = index;
-            ttsPage = currentPage;
-            displayPage();
-            isSpeaking = true;
-            ttsStopped = false;
-            setTtsButtonState("stop");
-            const sessionId = ttsSessionId;
-            setTimeout(function() {
-                if (sessionId !== ttsSessionId || !isSpeaking || ttsStopped) return;
-                speakNextSentence();
-            }, 100);
+            startTts();
         } else if (!isCurrent) {
-            ttsSessionId++;
-            window.speechSynthesis.cancel();
-            currentUtterance = null;
+            cancelSpeech();
             currentSentenceIndex = index;
-            ttsPage = currentPage;
-            displayPage();
             isSpeaking = false;
             ttsStopped = false;
             setTtsButtonState("play");
-        }
-        return;
-    }
-
-    // ── Toggle ON ──
-    if (wasPlaying && isCurrent) {
-        ttsStopped = true;
-        window.speechSynthesis.cancel();
-        isSpeaking = false;
-        setTtsButtonState("continue");
-        return;
-    }
-
-    // Everything else: start from tapped sentence
-    ttsSessionId++;
-    
-    // ONLY cancel if we were actively playing. 
-    // If we are paused or idle, the queue is already clear, and 
-    // calling cancel() causes Android Chrome to swallow the speak() command.
-    if (wasPlaying) {
-        window.speechSynthesis.cancel();
-    }
-
-    currentUtterance = null;
-    currentSentenceIndex = index;
-    ttsPage = currentPage;
-    
-    isSpeaking = true;
-    ttsStopped = false;
-    setTtsButtonState("stop");
-    const sessionId = ttsSessionId;
-
-    if (wasPlaying) {
-        // If we had to cancel active audio, wait for the engine to clear
-        setTimeout(function() {
-            if (sessionId !== ttsSessionId || !isSpeaking || ttsStopped) return;
-            speakNextSentence();
-        }, 100);
-    } else {
-        // If it was already stopped, start immediately to keep the tap gesture
-        speakNextSentence();
-    }
-}
-
-function speakNextSentence() {
-
-    const sessionId = ttsSessionId;
-    const sentences = pages[currentPage].l2;
-
-    if (currentSentenceIndex >= sentences.length) {
-        if (currentPage < pages.length - 1) {
-            currentPage++;
-            currentSentenceIndex = 0;
-            ttsPage = currentPage;
             displayPage();
-            speakNextSentence();
-            return;
         }
-
-        currentSentenceIndex = sentences.length - 1;
-        isSpeaking = false;
-        ttsStopped = false;
-        currentUtterance = null;
-        setTtsButtonState("play");
         return;
     }
 
-    currentUtterance = new SpeechSynthesisUtterance(sentences[currentSentenceIndex]);
-    currentUtterance.lang = currentBook ? currentBook.l2Code : "en-GB";
-
-    if (selectedTtsVoiceURI) {
-        const selectedVoice = availableTtsVoices.find(
-            voice => voice.voiceURI === selectedTtsVoiceURI
-        );
-        if (selectedVoice) currentUtterance.voice = selectedVoice;
+    if (wasPlaying && isCurrent) {
+        stopTts(true);
+        return;
     }
 
-    currentUtterance.rate = ttsSpeed;
-
-    currentUtterance.onend = function() {
-        if (ttsStopped || sessionId !== ttsSessionId) return;
-        currentSentenceIndex++;
-        speakNextSentence();
-    };
-
-    currentUtterance.onerror = function() {
-        if (ttsStopped || sessionId !== ttsSessionId) return;
-        isSpeaking = false;
-        currentUtterance = null;
-        setTtsButtonState("play");
-    };
-
-    // 1. Fire the audio synchronously (preserves the tap gesture)
-    window.speechSynthesis.resume(); // Ensures Chrome's engine isn't stuck paused
-    window.speechSynthesis.speak(currentUtterance);
-
-    // 2. Update the UI on the NEXT tick (so we don't destroy the DOM too early)
-    if (displayMode !== 0) {
-        setTimeout(function() { displayPage(); }, 0);
-    }
+    currentSentenceIndex = index;
+    startTts();
 }
+
+// ═══════════════════════════════════════════════════════════════
+//  TTS BUTTON LISTENER
+// ═══════════════════════════════════════════════════════════════
+
+ttsButton.addEventListener("click", function() {
+    if (!currentLessonId || pages.length === 0) return;
+    if (!("speechSynthesis" in window)) {
+        alert("Text-to-speech is not supported by this browser.");
+        return;
+    }
+
+    if (isSpeaking && !ttsStopped) {
+        stopTts(true);
+        return;
+    }
+
+    startTts();
+});
 
 // ═══════════════════════════════════════════════════════════════
 //  INPUT — SWIPE AND TAP
