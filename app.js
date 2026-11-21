@@ -2,6 +2,8 @@
 //  SWITCHREADER — parallel-text lesson reader
 // ═══════════════════════════════════════════════════════════════
 
+const APP_BUILD = "2026-11-21c";   // shown at the bottom of Settings: tells you which build is running
+
 const languageNames = {
     "en-GB": "English",
     "es-ES": "Spanish",
@@ -792,12 +794,19 @@ function setTtsButtonState(state) {
     }
 }
 
-// Optional on-screen log for phones: open the app with ?debug in the URL.
+// Event log. It always records into memory (no DOM writes, so it cannot
+// change app behaviour). Show it by tapping the page number (e.g. "1 / 6")
+// or by opening the app with ?debug in the URL.
 const TTS_DEBUG = new URLSearchParams(location.search).has("debug");
-function ttsLog(message) {
-    console.log("[tts]", message);
-    if (!TTS_DEBUG) return;
+const ttsLogLines = [];
+let ttsLogVisible = TTS_DEBUG;
+
+function renderTtsLog() {
     let box = document.getElementById("tts-debug");
+    if (!ttsLogVisible) {
+        if (box) box.remove();
+        return;
+    }
     if (!box) {
         box = document.createElement("pre");
         box.id = "tts-debug";
@@ -806,12 +815,23 @@ function ttsLog(message) {
             "z-index:999;pointer-events:none;white-space:pre-wrap;";
         document.body.appendChild(box);
     }
-    box.textContent = (box.textContent + "\n" + message).split("\n").slice(-14).join("\n");
+    box.textContent = "build " + APP_BUILD + "\n" + ttsLogLines.slice(-16).join("\n");
 }
 
-// With ?debug, also log every raw pointer/click event and what it hit,
-// so a "dead" tap shows up as either "no click at all" or "click on <div>".
-if (TTS_DEBUG) {
+function ttsLog(message) {
+    console.log("[tts]", message);
+    ttsLogLines.push(message);
+    if (ttsLogLines.length > 80) ttsLogLines.shift();
+    if (ttsLogVisible) renderTtsLog();
+}
+
+pageNumber.addEventListener("click", function() {
+    ttsLogVisible = !ttsLogVisible;
+    renderTtsLog();
+});
+
+// Record every raw pointer/click event and what it hit.
+(function() {
     const describe = function(event) {
         const t = event.target;
         return (t.tagName || "?").toLowerCase() + (t.id ? "#" + t.id : "");
@@ -820,7 +840,7 @@ if (TTS_DEBUG) {
     document.addEventListener("pointerup", function(e) { ttsLog("pu " + describe(e)); }, true);
     document.addEventListener("pointercancel", function() { ttsLog("pointercancel"); }, true);
     document.addEventListener("click", function(e) { ttsLog("click " + describe(e)); }, true);
-}
+})();
 
 // Invalidate the current session and silence the engine.
 // cancel() is only called when the engine is actually busy: on Android
@@ -1095,6 +1115,8 @@ ttsButton.addEventListener("click", function() {
 
 let swipeStartX = 0;
 let swipeStartY = 0;
+let swipeStartTime = 0;
+let lastTouchTapAt = 0;
 let isTrackingSwipe = false;
 
 readingAreaSection.addEventListener("pointerdown", function(event) {
@@ -1103,6 +1125,7 @@ readingAreaSection.addEventListener("pointerdown", function(event) {
 
     swipeStartX = event.clientX;
     swipeStartY = event.clientY;
+    swipeStartTime = performance.now();
     isTrackingSwipe = true;
 });
 
@@ -1114,7 +1137,18 @@ readingAreaSection.addEventListener("pointerup", function(event) {
     const differenceY = event.clientY - swipeStartY;
     const minimumSwipe = 50;
 
-    if (Math.max(Math.abs(differenceX), Math.abs(differenceY)) < minimumSwipe) return;
+    const moved = Math.max(Math.abs(differenceX), Math.abs(differenceY));
+
+    // A short, nearly stationary touch is a tap. Handle it here instead of
+    // waiting for the browser's synthesised click, which Chrome on Android
+    // sometimes never delivers.
+    if (moved < 10 && performance.now() - swipeStartTime < 600) {
+        lastTouchTapAt = performance.now();
+        handleReadingTap(event.clientY);
+        return;
+    }
+
+    if (moved < minimumSwipe) return;
 
     if (Math.abs(differenceX) > Math.abs(differenceY)) {
         if (differenceX < 0) goToNextPage();
@@ -1132,16 +1166,13 @@ readingAreaSection.addEventListener("pointercancel", function() {
 // Tapping anywhere in the reading area counts. A tap on (or just beside) a
 // sentence picks that sentence; a tap in empty space, or anywhere in blank
 // mode where there is no text, acts on the current sentence.
-readingAreaSection.addEventListener("click", function(event) {
-    if (event.target.closest("button")) return;
-
+function handleReadingTap(clientY) {
     const paragraphs = Array.from(readingArea.querySelectorAll("p"));
     const margin = 12;   // px of forgiveness around each paragraph
 
     let index = paragraphs.findIndex(function(p) {
         const rect = p.getBoundingClientRect();
-        return event.clientY >= rect.top - margin &&
-               event.clientY <= rect.bottom + margin;
+        return clientY >= rect.top - margin && clientY <= rect.bottom + margin;
     });
 
     if (index === -1) {
@@ -1150,6 +1181,13 @@ readingAreaSection.addEventListener("click", function(event) {
     }
 
     jumpToSentence(index);
+}
+
+// Fallback for mouse input and touches that weren't handled on pointerup.
+readingAreaSection.addEventListener("click", function(event) {
+    if (event.target.closest("button")) return;
+    if (performance.now() - lastTouchTapAt < 800) return;   // already handled
+    handleReadingTap(event.clientY);
 });
 
 modeLabel.addEventListener("click", function() {
@@ -1219,6 +1257,15 @@ window.addEventListener('popstate', function(event) {
 
 library = loadLibrary();
 seedLibraryIfEmpty();
+
+(function addBuildStamp() {
+    const body = settingsPanel.querySelector(".modal-body");
+    if (!body) return;
+    const stamp = document.createElement("div");
+    stamp.textContent = "Build " + APP_BUILD;
+    stamp.style.cssText = "text-align:center;color:#555;font-size:11px;padding:8px 0 24px;";
+    body.appendChild(stamp);
+})();
 
 // Set the initial history state
 history.replaceState({ view: 'home' }, '', '#home');
