@@ -943,8 +943,11 @@ function speakNextSentence(attempt = 0) {
     ttsLog("speak (attempt " + attempt + ")");
     window.speechSynthesis.speak(utterance);
 
-    // THEN update the UI (once per sentence)
-    if (displayMode !== 0) displayPage();
+    // Delay the UI update by 50ms. If we destroy the DOM element 
+    // immediately, Android Chrome revokes the audio permission.
+    if (displayMode !== 0) {
+        setTimeout(displayPage, 50);
+    }
 
     // Watchdog: some engines drop the utterance without any event at all.
     setTimeout(function() {
