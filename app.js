@@ -814,6 +814,7 @@ function startTts() {
 }
 
 function speakNextSentence() {
+
     const sessionId = ttsSessionId;
     const sentences = pages[currentPage].l2;
 
@@ -826,12 +827,19 @@ function speakNextSentence() {
             speakNextSentence();
             return;
         }
+
         currentSentenceIndex = sentences.length - 1;
-        stopTts(false);
+        isSpeaking = false;
+        ttsStopped = false;
+        currentUtterance = null;
+        setTtsButtonState("play");
         return;
     }
 
     currentUtterance = new SpeechSynthesisUtterance(sentences[currentSentenceIndex]);
+
+    // REMOVED the synchronous displayPage() from here!
+
     currentUtterance.lang = currentBook ? currentBook.l2Code : "en-GB";
 
     if (selectedTtsVoiceURI) {
@@ -843,6 +851,14 @@ function speakNextSentence() {
 
     currentUtterance.rate = ttsSpeed;
 
+    currentUtterance.onstart = function() {
+        if (sessionId === ttsSessionId) {
+            ttsRetried = false;
+            // Update the UI exactly when the audio begins
+            if (displayMode !== 0) displayPage();
+        }
+    };
+
     currentUtterance.onend = function() {
         if (ttsStopped || sessionId !== ttsSessionId) return;
         currentSentenceIndex++;
@@ -851,33 +867,28 @@ function speakNextSentence() {
 
     currentUtterance.onerror = function(event) {
         if (ttsStopped || sessionId !== ttsSessionId) return;
+        console.warn("TTS error:", event.error);
 
-        // Chrome bug: if we try to speak immediately after cancel(), it throws 
-        // "interrupted" or "canceled". We retry once after a 150ms delay.
-        if (event.error === 'interrupted' || event.error === 'canceled') {
-            if (!currentUtterance._retried) {
-                currentUtterance._retried = true;
-                setTimeout(function() {
-                    if (ttsStopped || sessionId !== ttsSessionId) return;
-                    window.speechSynthesis.speak(currentUtterance);
-                }, 150);
-                return;
-            }
+        // Some engines (notably Android Chrome) fail the first utterance
+        // after a cancel() with "interrupted"/"canceled". Retry once.
+        if ((event.error === "interrupted" || event.error === "canceled") && !ttsRetried) {
+            ttsRetried = true;
+            setTimeout(function() {
+                if (sessionId !== ttsSessionId || ttsStopped || !isSpeaking) return;
+                speakNextSentence();
+            }, 150);
+            return;
         }
 
-        // Real error
-        console.warn("TTS Error:", event.error);
         isSpeaking = false;
-        ttsStopped = false;
         currentUtterance = null;
         setTtsButtonState("play");
     };
 
+    // Call speak FIRST to preserve the user gesture window on Android
     window.speechSynthesis.speak(currentUtterance);
-
-    if (displayMode !== 0) {
-        setTimeout(function() { displayPage(); }, 0);
-    }
+    
+    // REMOVED the second synchronous displayPage() from here too!
 }
 
 // ═══════════════════════════════════════════════════════════════
