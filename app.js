@@ -409,6 +409,8 @@ function openLesson(lessonId) {
 
     saveCurrentPosition();
 
+    history.pushState({ view: 'reader' }, '', '#reader');
+
     currentLessonId = lessonId;
     currentBook = {
         l2Code: lesson.l2Code,
@@ -445,11 +447,8 @@ function openLesson(lessonId) {
     displayPage();
 }
 
-homeButton.addEventListener("click", function() {
-
+function goHome() {
     // Stop any active speech before leaving the reader.
-    // Incrementing the session id prevents any pending
-    // setTimeout callback from restarting playback.
     ttsSessionId++;
     window.speechSynthesis.cancel();
     isSpeaking = false;
@@ -462,6 +461,10 @@ homeButton.addEventListener("click", function() {
     currentLessonId = null;
     currentBook = null;
     showHomeScreen();
+}
+
+homeButton.addEventListener("click", function() {
+    history.back(); // This triggers the popstate event, which calls goHome()
 });
 
 // ═══════════════════════════════════════════════════════════════
@@ -1106,12 +1109,27 @@ window.addEventListener("resize", function() {
     displayPage();
 });
 
+window.addEventListener('popstate', function(event) {
+    if (!readerScreen.hidden) {
+        // We were in the reader, so transition to Home
+        goHome();
+    } else {
+        // We are already on the Home screen.
+        // Trap the back button so the app doesn't close.
+        history.pushState({ view: 'home' }, '', '#home');
+    }
+});
+
 // ═══════════════════════════════════════════════════════════════
 //  BOOT
 // ═══════════════════════════════════════════════════════════════
 
 library = loadLibrary();
 seedLibraryIfEmpty();
+
+// Set the initial history state
+history.replaceState({ view: 'home' }, '', '#home');
+
 showHomeScreen();
 
 window.addEventListener("pagehide", function() {
