@@ -760,6 +760,7 @@ function cycleDisplayMode(direction) {
     } else {
         displayMode = displayMode === 1 ? 2 : 1;
     }
+    ttsLog("mode -> " + displayMode);
     displayPage();
 }
 
@@ -805,7 +806,20 @@ function ttsLog(message) {
             "z-index:999;pointer-events:none;white-space:pre-wrap;";
         document.body.appendChild(box);
     }
-    box.textContent = (box.textContent + "\n" + message).split("\n").slice(-8).join("\n");
+    box.textContent = (box.textContent + "\n" + message).split("\n").slice(-14).join("\n");
+}
+
+// With ?debug, also log every raw pointer/click event and what it hit,
+// so a "dead" tap shows up as either "no click at all" or "click on <div>".
+if (TTS_DEBUG) {
+    const describe = function(event) {
+        const t = event.target;
+        return (t.tagName || "?").toLowerCase() + (t.id ? "#" + t.id : "");
+    };
+    document.addEventListener("pointerdown", function(e) { ttsLog("pd " + describe(e)); }, true);
+    document.addEventListener("pointerup", function(e) { ttsLog("pu " + describe(e)); }, true);
+    document.addEventListener("pointercancel", function() { ttsLog("pointercancel"); }, true);
+    document.addEventListener("click", function(e) { ttsLog("click " + describe(e)); }, true);
 }
 
 // Invalidate the current session and silence the engine.
@@ -943,11 +957,8 @@ function speakNextSentence(attempt = 0) {
     ttsLog("speak (attempt " + attempt + ")");
     window.speechSynthesis.speak(utterance);
 
-    // Delay the UI update by 50ms. If we destroy the DOM element 
-    // immediately, Android Chrome revokes the audio permission.
-    if (displayMode !== 0) {
-        setTimeout(displayPage, 50);
-    }
+    // THEN update the UI (once per sentence)
+    if (displayMode !== 0) displayPage();
 
     // Watchdog: some engines drop the utterance without any event at all.
     setTimeout(function() {
@@ -1030,6 +1041,8 @@ function jumpToSentence(index) {
 
     const wasPlaying = isSpeaking && !ttsStopped;
     const isCurrent = (index === currentSentenceIndex);
+    ttsLog("jump i=" + index + " cur=" + currentSentenceIndex +
+           " playing=" + wasPlaying + " tapStarts=" + tapStartsTts);
 
     if (!tapStartsTts) {
         if (wasPlaying && !isCurrent) {
@@ -1065,6 +1078,8 @@ ttsButton.addEventListener("click", function() {
         alert("Text-to-speech is not supported by this browser.");
         return;
     }
+
+    ttsLog("btn speaking=" + isSpeaking + " stopped=" + ttsStopped);
 
     if (isSpeaking && !ttsStopped) {
         stopTts(true);
@@ -1114,14 +1129,25 @@ readingAreaSection.addEventListener("pointercancel", function() {
     isTrackingSwipe = false;
 });
 
-readingArea.addEventListener("click", function(event) {
-    const tapped = event.target.closest("p");
-    if (!tapped) return;
-    if (!readingArea.contains(tapped)) return;
+// Tapping anywhere in the reading area counts. A tap on (or just beside) a
+// sentence picks that sentence; a tap in empty space, or anywhere in blank
+// mode where there is no text, acts on the current sentence.
+readingAreaSection.addEventListener("click", function(event) {
+    if (event.target.closest("button")) return;
 
     const paragraphs = Array.from(readingArea.querySelectorAll("p"));
-    const index = paragraphs.indexOf(tapped);
-    if (index === -1) return;
+    const margin = 12;   // px of forgiveness around each paragraph
+
+    let index = paragraphs.findIndex(function(p) {
+        const rect = p.getBoundingClientRect();
+        return event.clientY >= rect.top - margin &&
+               event.clientY <= rect.bottom + margin;
+    });
+
+    if (index === -1) {
+        index = currentSentenceIndex;
+        ttsLog("tap in empty space -> current sentence");
+    }
 
     jumpToSentence(index);
 });
