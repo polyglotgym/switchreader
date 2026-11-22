@@ -15,7 +15,7 @@
     <meta name="apple-mobile-web-app-title" content="SwitchReader">
     <link rel="apple-touch-icon" href="apple-touch-icon.png">
 
-    <link rel="stylesheet" href="style.css?v=21">
+    <link rel="stylesheet" href="style.css?v=22">
 </head>
 <body>
 
@@ -183,6 +183,26 @@
             </div>
         </div>
 
+        <div class="card-section">
+            <h3 class="section-header">Advanced</h3>
+
+            <label class="toggle-row">
+                <div class="toggle-label">
+                    <div class="toggle-title">Follow my place when switching language</div>
+                    <div class="toggle-hint">On a long page, switching language lands on the matching part of the text. Off: each language remembers its own place.</div>
+                </div>
+                <input type="checkbox" id="follow-together" class="switch" checked>
+            </label>
+
+            <label class="toggle-row">
+                <div class="toggle-label">
+                    <div class="toggle-title">Show debug log</div>
+                    <div class="toggle-hint">Shows a small log of recent events at the bottom of the screen. For troubleshooting.</div>
+                </div>
+                <input type="checkbox" id="show-debug-log" class="switch">
+            </label>
+        </div>
+
     </div>
 </section>
 
@@ -243,7 +263,7 @@
 </section>
 
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<script src="app.js?v=21"></script>
+<script src="app.js?v=22"></script>
 
 </body>
 </html>

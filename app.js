@@ -2,7 +2,7 @@
 //  SWITCHREADER — parallel-text lesson reader
 // ═══════════════════════════════════════════════════════════════
 
-const APP_BUILD = "2026-11-22c";   // shown at the bottom of Settings: tells you which build is running
+const APP_BUILD = "2026-11-22d";   // shown at the bottom of Settings: tells you which build is running
 
 // Some browsers have no text-to-speech at all. Remember that, and give the
 // rest of the code a harmless stand-in so the app still loads and reads.
@@ -44,7 +44,10 @@ let displayMode = 2;
 let currentPage = 0;
 let lastPaginatedWidth = 0;    // text-box size the pages were last built for
 let lastPaginatedHeight = 0;
-let lastRenderKey = "";         // which page/mode/size was drawn last (to keep its scroll position)
+let lastPageKey = "";           // which page (at which size) was drawn last
+let lastRenderMode = -1;        // which language/blank mode was drawn last
+let heldReadingPoint = null;    // "where you were" in the language you just left
+let scrollByMode = {};          // used when "follow my place" is off: each language's own scroll
 let lastRenderSentence = -1;
 let pendingScrollTarget = null; // where a smooth scroll is heading, if one is in progress
 let pendingScrollTimer = null;
@@ -308,6 +311,15 @@ continueTtsOnPageTurnCheckbox.addEventListener("change", function() {
     localStorage.setItem("continueTtsOnPageTurn", continueTtsOnPageTurn);
 });
 
+// Follow my place when switching language
+const followTogetherCheckbox = document.getElementById("follow-together");
+let followTogether = localStorage.getItem("followTogether") !== "false";
+followTogetherCheckbox.checked = followTogether;
+followTogetherCheckbox.addEventListener("change", function() {
+    followTogether = followTogetherCheckbox.checked;
+    localStorage.setItem("followTogether", followTogether);
+});
+
 // Speech speed
 let ttsSpeed = 1.0;
 const savedTtsSpeed = localStorage.getItem("ttsSpeed");
@@ -526,7 +538,7 @@ function openLesson(lessonId) {
     }));
 
     pages = [];
-    lastRenderKey = "";
+    lastPageKey = "";
     currentPage = 0;
     currentSentenceIndex = 0;
     displayMode = 2;
@@ -825,15 +837,27 @@ function displayPage() {
 
     // Rebuilding the text (which happens whenever the highlight moves) would
     // normally snap a scrolled page back to the top. Note where we were, so
-    // we can go back there if this is still the same page in the same mode.
-    const renderKey = pages[currentPage].startSentence + ":" + displayMode + ":" +
-                      lastPaginatedWidth + "x" + lastPaginatedHeight + ":" +
-                      readingArea.style.fontSize + ":" + readingArea.style.lineHeight;
-    const sameView = (renderKey === lastRenderKey);
+    // we can go back there if this is still the same page.
+    const pageKey = pages[currentPage].startSentence + ":" +
+                    lastPaginatedWidth + "x" + lastPaginatedHeight + ":" +
+                    readingArea.style.fontSize + ":" + readingArea.style.lineHeight;
+    const samePage = (pageKey === lastPageKey);
+    const modeSwitched = samePage && displayMode !== lastRenderMode;
+    const sameView = samePage && !modeSwitched;   // exactly what is already on screen
     const sentenceMoved = (currentSentenceIndex !== lastRenderSentence);
     const previousScrollTop = (pendingScrollTarget !== null)
         ? pendingScrollTarget
         : readingArea.scrollTop;
+
+    if (!samePage) {
+        heldReadingPoint = null;
+        scrollByMode = {};
+    }
+    if (modeSwitched && lastRenderMode !== 0) {
+        // Leaving a language: remember where we were in it, before it is redrawn.
+        scrollByMode[lastRenderMode] = previousScrollTop;
+        heldReadingPoint = captureReadingPoint(previousScrollTop);
+    }
 
     readingArea.innerHTML = "";
 
@@ -851,15 +875,25 @@ function displayPage() {
         return `<p${highlight}>${escapeHtml(sentence)}</p>`;
     }).join("");
 
-    readingArea.scrollTop = sameView ? previousScrollTop : 0;
+    if (sameView) {
+        readingArea.scrollTop = previousScrollTop;
+    } else if (modeSwitched) {
+        if (displayMode !== 0) {
+            if (followTogether) applyReadingPoint(heldReadingPoint);
+            else readingArea.scrollTop = scrollByMode[displayMode] || 0;
+        }
+    } else {
+        readingArea.scrollTop = 0;              // a different page starts at the top
+    }
     if (!sameView) {
         clearTimeout(pendingScrollTimer);
         pendingScrollTarget = null;
     }
-    if ((!sameView || sentenceMoved) && displayMode !== 0) {
-        keepCurrentSentenceInView(sameView);   // glide if still on the same page
+    if (displayMode !== 0 && (!samePage || sentenceMoved)) {
+        keepCurrentSentenceInView(samePage);    // glide if still on the same page
     }
-    lastRenderKey = renderKey;
+    lastPageKey = pageKey;
+    lastRenderMode = displayMode;
     lastRenderSentence = currentSentenceIndex;
     updateScrollButtons();
 
@@ -974,6 +1008,60 @@ function followSpokenPosition(charIndex, textLength) {
     scrollReadingTo(Math.min(maxTop, spokenY - viewHeight * 0.25), true);
 }
 
+// ── Keeping your place when you switch language ────────────────────
+// Before the text is redrawn in the other language we note which sentence
+// (and how far through it) is at the top of the screen. After the redraw we
+// scroll the new text to the matching spot.
+
+function captureReadingPoint(effectiveScrollTop) {
+    const maxTop = readingArea.scrollHeight - readingArea.clientHeight;
+    if (maxTop <= 2) return null;                       // everything fitted, nothing to match
+    const overall = Math.max(0, Math.min(1, effectiveScrollTop / maxTop));
+    if (effectiveScrollTop <= 2) return { atStart: true, overall: 0 };
+    if (effectiveScrollTop >= maxTop - 2) return { atEnd: true, overall: 1 };
+
+    const kids = readingArea.children;
+    const areaTop = readingArea.getBoundingClientRect().top;
+    let index = 0;
+    let fraction = 0;
+    for (let i = 0; i < kids.length; i++) {
+        const rect = kids[i].getBoundingClientRect();
+        const top = rect.top - areaTop + readingArea.scrollTop;
+        if (top > effectiveScrollTop + 1) break;
+        index = i;
+        fraction = rect.height > 0
+            ? Math.max(0, Math.min(1, (effectiveScrollTop - top) / rect.height))
+            : 0;
+    }
+    return { index: index, fraction: fraction, count: kids.length, overall: overall };
+}
+
+function applyReadingPoint(point) {
+    const maxTop = Math.max(0, readingArea.scrollHeight - readingArea.clientHeight);
+    if (!point || maxTop <= 0) {
+        readingArea.scrollTop = 0;
+        return;
+    }
+
+    let target;
+    if (point.atStart) {
+        target = 0;
+    } else if (point.atEnd) {
+        target = maxTop;
+    } else {
+        const kids = readingArea.children;
+        if (kids.length === point.count && kids[point.index]) {
+            const areaTop = readingArea.getBoundingClientRect().top;
+            const rect = kids[point.index].getBoundingClientRect();
+            const top = rect.top - areaTop + readingArea.scrollTop;
+            target = top + point.fraction * rect.height;
+        } else {
+            target = point.overall * maxTop;            // sentence counts differ: use overall proportion
+        }
+    }
+    readingArea.scrollTop = Math.max(0, Math.min(maxTop, target));
+}
+
 // ═══════════════════════════════════════════════════════════════
 //  NAVIGATION HELPERS
 // ═══════════════════════════════════════════════════════════════
@@ -1013,11 +1101,11 @@ function setTtsButtonState(state) {
 }
 
 // Event log. It always records into memory (no DOM writes, so it cannot
-// change app behaviour). Show it by tapping the page number (e.g. "1 / 6")
-// or by opening the app with ?debug in the URL.
+// change app behaviour). Show it with the "Show debug log" switch in
+// Settings > Advanced, or by opening the app with ?debug in the URL.
 const TTS_DEBUG = new URLSearchParams(location.search).has("debug");
 const ttsLogLines = [];
-let ttsLogVisible = TTS_DEBUG;
+let ttsLogVisible = TTS_DEBUG || localStorage.getItem("showDebugLog") === "true";
 
 function renderTtsLog() {
     let box = document.getElementById("tts-debug");
@@ -1043,8 +1131,11 @@ function ttsLog(message) {
     if (ttsLogVisible) renderTtsLog();
 }
 
-pageNumber.addEventListener("click", function() {
-    ttsLogVisible = !ttsLogVisible;
+const debugLogCheckbox = document.getElementById("show-debug-log");
+debugLogCheckbox.checked = ttsLogVisible;
+debugLogCheckbox.addEventListener("change", function() {
+    ttsLogVisible = debugLogCheckbox.checked;
+    localStorage.setItem("showDebugLog", ttsLogVisible);
     renderTtsLog();
 });
 
