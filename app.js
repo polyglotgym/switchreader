@@ -2,7 +2,7 @@
 //  SWITCHREADER — parallel-text lesson reader
 // ═══════════════════════════════════════════════════════════════
 
-const APP_BUILD = "2026-11-22d";   // shown at the bottom of Settings: tells you which build is running
+const APP_BUILD = "2026-11-22e";   // shown at the bottom of Settings: tells you which build is running
 
 // Some browsers have no text-to-speech at all. Remember that, and give the
 // rest of the code a harmless stand-in so the app still loads and reads.
@@ -201,6 +201,13 @@ const importPanel = document.getElementById("import-panel");
 const importClose = document.getElementById("import-close");
 const importTitleInput = document.getElementById("import-title");
 const importFileInput = document.getElementById("excel-file");
+// The real file input is hidden, so let Enter/Space on the "Choose file" label open it.
+document.querySelector(".file-picker-label").addEventListener("keydown", function(event) {
+    if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        importFileInput.click();
+    }
+});
 const importConfirmButton = document.getElementById("import-confirm-button");
 const fileNameDisplay = document.getElementById("file-name-display");
 const l2LanguageSelect = document.getElementById("l2-language");
@@ -480,6 +487,7 @@ function renderLibrary() {
         deleteBtn.type = "button";
         deleteBtn.className = "lesson-delete";
         deleteBtn.title = "Delete";
+        deleteBtn.setAttribute("aria-label", "Delete lesson: " + lesson.title);
         deleteBtn.innerHTML =
             '<svg width="18" height="18"><use href="#i-trash"/></svg>';
         deleteBtn.addEventListener("click", (e) => {
@@ -751,11 +759,12 @@ function paginateReadingUnits() {
     measureBox.style.overflowWrap = "break-word";
     document.body.appendChild(measureBox);
 
-    function measureTexts(texts) {
+    function measureTexts(texts, lang) {
         let totalHeight = 0;
         texts.forEach(function(text) {
             const paragraph = document.createElement("p");
             paragraph.textContent = text;
+            if (lang) paragraph.lang = lang;
             paragraph.style.margin = `0 0 ${paragraphMargin}px 0`;
             measureBox.appendChild(paragraph);
             totalHeight += paragraph.getBoundingClientRect().height;
@@ -781,8 +790,8 @@ function paginateReadingUnits() {
         const l2Texts = Array.isArray(unit.l2) ? unit.l2 : [unit.l2 || ""];
         const l1Texts = Array.isArray(unit.l1) ? unit.l1 : [unit.l1 || ""];
 
-        const newL2Height = measureTexts(l2Texts);
-        const newL1Height = measureTexts(l1Texts);
+        const newL2Height = measureTexts(l2Texts, currentBook?.l2Code);
+        const newL1Height = measureTexts(l1Texts, currentBook?.l1Code);
 
         const wouldOverflow =
             Math.max(l2Height + newL2Height, l1Height + newL1Height) > availableHeight;
@@ -867,6 +876,14 @@ function displayPage() {
             ? pages[currentPage].l2
             : [];
 
+    // Tell the browser which language this text is in, so it picks the right
+    // letter shapes (this matters most for Japanese) and screen readers
+    // pronounce it properly.
+    const textLang = displayMode === 1 ? currentBook?.l1Code
+                   : displayMode === 2 ? currentBook?.l2Code : "";
+    if (textLang) readingArea.setAttribute("lang", textLang);
+    else readingArea.removeAttribute("lang");
+
     readingArea.innerHTML = texts.map((sentence, index) => {
         const highlight =
             ttsHighlightEnabled && index === currentSentenceIndex
@@ -903,6 +920,9 @@ function displayPage() {
 
     modeLabel.textContent = modeLabels[displayMode] || "";
     modeLabel.classList.toggle("blank", displayMode === 0);
+    modeLabel.setAttribute("aria-label",
+        "Display mode: " + (displayMode === 0 ? "blank" : modeLabels[displayMode]) +
+        ". Activate to change.");
 
     pageNumber.textContent = `${currentPage + 1} / ${pages.length}`;
 
@@ -1091,12 +1111,15 @@ function setTtsButtonState(state) {
     if (state === "stop") {
         ttsIcon.setAttribute("href", "#i-stop");
         ttsButton.setAttribute("title", "Stop");
+        ttsButton.setAttribute("aria-label", "Stop");
     } else if (state === "continue") {
         ttsIcon.setAttribute("href", "#i-play");
         ttsButton.setAttribute("title", "Continue");
+        ttsButton.setAttribute("aria-label", "Continue");
     } else {
         ttsIcon.setAttribute("href", "#i-play");
         ttsButton.setAttribute("title", "Play");
+        ttsButton.setAttribute("aria-label", "Play");
     }
 }
 
