@@ -2,7 +2,22 @@
 //  SWITCHREADER — parallel-text lesson reader
 // ═══════════════════════════════════════════════════════════════
 
-const APP_BUILD = "2026-11-21d";   // shown at the bottom of Settings: tells you which build is running
+const APP_BUILD = "2026-11-22a";   // shown at the bottom of Settings: tells you which build is running
+
+// Some browsers have no text-to-speech at all. Remember that, and give the
+// rest of the code a harmless stand-in so the app still loads and reads.
+const speechSupported = "speechSynthesis" in window &&
+                        typeof SpeechSynthesisUtterance !== "undefined";
+if (!("speechSynthesis" in window)) {
+    window.speechSynthesis = {
+        speaking: false,
+        pending: false,
+        speak() {},
+        cancel() {},
+        getVoices() { return []; },
+        addEventListener() {}
+    };
+}
 
 const languageNames = {
     "en-GB": "English",
@@ -41,7 +56,13 @@ function loadLibrary() {
 }
 
 function saveLibrary() {
-    localStorage.setItem("switchreader-library", JSON.stringify(library));
+    try {
+        localStorage.setItem("switchreader-library", JSON.stringify(library));
+        return true;
+    } catch (e) {
+        console.error("Could not save library:", e);
+        return false;
+    }
 }
 
 function seedLibraryIfEmpty() {
@@ -504,6 +525,13 @@ importFileInput.addEventListener("change", function() {
 importConfirmButton.addEventListener("click", async function() {
     if (!pendingImportFile) return;
 
+    if (typeof XLSX === "undefined") {
+        alert("The spreadsheet reader could not be loaded. It needs an " +
+              "internet connection. Please connect and reload the app, " +
+              "then try again.");
+        return;
+    }
+
     const title = importTitleInput.value.trim() ||
                   pendingImportFile.name.replace(/\.(xlsx|xls|csv)$/i, "");
     const l2Code = l2LanguageSelect.value;
@@ -530,13 +558,20 @@ importConfirmButton.addEventListener("click", async function() {
         };
 
         library.push(lesson);
-        saveLibrary();
+        if (!saveLibrary()) {
+            library.pop();
+            alert("This lesson could not be saved because the device " +
+                  "storage is full. Delete a lesson you no longer need, " +
+                  "then import again.");
+            return;
+        }
 
         importPanel.hidden = true;
         renderLibrary();
     } catch (error) {
-        alert("There was a problem importing this file. " +
-              "Please check that it is a valid Excel workbook.");
+        alert("There was a problem reading this file. Please check that " +
+              "it is an Excel or CSV file with the original language in " +
+              "column A and the translation in column B.");
         console.error(error);
     }
 });
@@ -719,43 +754,6 @@ function displayPage() {
 //  NAVIGATION HELPERS
 // ═══════════════════════════════════════════════════════════════
 
-function changePageWithTts(changeFn) {
-    const wasSpeaking = isSpeaking && !ttsStopped;
-
-    if (wasSpeaking || ttsStopped) window.speechSynthesis.cancel();
-
-    ttsSessionId++;
-    changeFn();
-    currentSentenceIndex = 0;
-    ttsPage = currentPage;
-    currentUtterance = null;
-
-    displayPage();
-
-    if (wasSpeaking && continueTtsOnPageTurn) {
-        isSpeaking = true;
-        ttsStopped = false;
-        setTtsButtonState("stop");
-        const sessionId = ttsSessionId;
-        setTimeout(function() {
-            if (sessionId !== ttsSessionId || !isSpeaking || ttsStopped) return;
-            speakNextSentence();
-        }, 100);
-    } else {
-        isSpeaking = false;
-        ttsStopped = false;
-        setTtsButtonState("play");
-    }
-}
-
-function goToPreviousPage() {
-    if (currentPage > 0) changePageWithTts(function() { currentPage--; });
-}
-
-function goToNextPage() {
-    if (currentPage < pages.length - 1) changePageWithTts(function() { currentPage++; });
-}
-
 function cycleDisplayMode(direction) {
     if (blankModeEnabled) {
         displayMode = (displayMode + (direction === -1 ? 2 : 1)) % 3;
@@ -765,10 +763,6 @@ function cycleDisplayMode(direction) {
     ttsLog("mode -> " + displayMode);
     displayPage();
 }
-
-// ═══════════════════════════════════════════════════════════════
-//  TTS ENGINE
-// ═══════════════════════════════════════════════════════════════
 
 // ═══════════════════════════════════════════════════════════════
 //  TTS ENGINE & STATE MACHINE
@@ -863,6 +857,7 @@ function stopTts(isPaused = true) {
 }
 
 function startTts() {
+    if (!speechSupported) return;
     const synth = window.speechSynthesis;
     const wasBusy = synth.speaking || synth.pending;
 
@@ -1094,7 +1089,7 @@ function jumpToSentence(index) {
 
 ttsButton.addEventListener("click", function() {
     if (!currentLessonId || pages.length === 0) return;
-    if (!("speechSynthesis" in window)) {
+    if (!speechSupported) {
         alert("Text-to-speech is not supported by this browser.");
         return;
     }
