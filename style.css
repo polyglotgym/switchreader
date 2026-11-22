@@ -303,11 +303,21 @@ body {
 /* PAGE + MODE */
 
 #page-number {
+    background: transparent;   /* it is a <button> now: remove the default button look */
+    border: none;
+    margin: 0;
+    cursor: pointer;
+    border-radius: 4px;
     font-family: Arial, sans-serif;
     font-size: 12px;
     color: #777;
-    padding: 0 4px;
+    padding: 8px 12px;
     min-width: 40px;
+    text-align: left;
+}
+
+#page-number:hover {
+    background: #1a1a1a;
 }
 
 #mode-label {
@@ -643,6 +653,8 @@ body {
 
 .icon-btn:focus-visible,
 #mode-label:focus-visible,
+#page-number:focus-visible,
+.sheet-button:focus-visible,
 .scroll-btn:focus-visible,
 .lesson-open:focus-visible,
 .lesson-delete:focus-visible,
@@ -655,4 +667,138 @@ input[type="text"]:focus-visible,
 input[type="range"]:focus-visible {
     outline: 2px solid #64748b;
     outline-offset: 2px;
+}
+
+
+/* IMPORT HINT */
+
+.file-hint {
+    font-size: 11px;
+    color: #666;
+    line-height: 1.5;
+    margin-top: 10px;
+}
+
+
+/* END OF LESSON CARD (shown as the last page) */
+
+.end-card {
+    padding: 12vh 0 0;
+    text-align: center;
+    font-family: Arial, sans-serif;
+    font-size: 14px;
+    line-height: 1.4;
+    color: #ddd;
+}
+
+.end-title {
+    font-size: 12px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: #777;
+    margin-bottom: 10px;
+}
+
+.end-lesson {
+    font-size: 18px;
+    margin-bottom: 26px;
+    overflow-wrap: break-word;
+}
+
+.end-card .primary-button {
+    max-width: 320px;
+    margin: 12px auto 0;
+    white-space: normal;
+    overflow-wrap: break-word;
+}
+
+.end-hint {
+    font-size: 13px;
+    color: #777;
+    margin-top: 22px;
+}
+
+
+/* GO TO PAGE (small pop-up) */
+
+.sheet {
+    position: fixed;
+    inset: 0;
+    z-index: 110;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: rgba(0, 0, 0, 0.65);
+    font-family: Arial, sans-serif;
+}
+
+.sheet-card {
+    width: 100%;
+    max-width: 340px;
+    background: #181818;
+    border: 1px solid #333;
+    border-radius: 12px;
+    padding: 8px 16px 16px;
+}
+
+.sheet-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.sheet-header h2 {
+    font-size: 16px;
+    font-weight: 500;
+    margin: 0;
+    color: #ddd;
+}
+
+.goto-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 8px 0 14px;
+}
+
+#goto-input {
+    width: 92px;
+    padding: 10px;
+    background: #222;
+    color: #eee;
+    border: 1px solid #444;
+    border-radius: 5px;
+    font-size: 16px;          /* 16px stops phones zooming in when typing */
+    text-align: center;
+}
+
+#goto-total {
+    flex: 1;
+    color: #888;
+    font-size: 14px;
+}
+
+.sheet-button {
+    padding: 11px 16px;
+    font-size: 14px;
+    background: #2a2a2a;
+    color: #fff;
+    border: 1px solid #444;
+    border-radius: 8px;
+    cursor: pointer;
+    font-family: Arial, sans-serif;
+}
+
+.sheet-button:hover {
+    background: #333;
+}
+
+.goto-shortcuts {
+    display: flex;
+    gap: 10px;
+}
+
+.goto-shortcuts .sheet-button {
+    flex: 1;
 }

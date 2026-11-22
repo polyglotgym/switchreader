@@ -15,7 +15,7 @@
     <meta name="apple-mobile-web-app-title" content="SwitchReader">
     <link rel="apple-touch-icon" href="apple-touch-icon.png">
 
-    <link rel="stylesheet" href="style.css?v=23">
+    <link rel="stylesheet" href="style.css?v=24">
 </head>
 <body>
 
@@ -98,7 +98,7 @@
     </section>
 
     <div class="bottom-bar">
-        <span id="page-number">1 / 1</span>
+        <button type="button" id="page-number" aria-label="Go to page">1 / 1</button>
         <button class="icon-btn play" id="tts-toggle" title="Play" aria-label="Play">
             <svg width="22" height="22"><use id="tts-toggle-icon" href="#i-play"/></svg>
         </button>
@@ -115,9 +115,10 @@
 
             <label class="toggle-row">
                 <div class="toggle-label">
-                    <div class="toggle-title">Enable Blank mode</div>
+                    <div class="toggle-title">Enable third mode</div>
+                    <div class="toggle-hint">Shows the third spreadsheet column (romanised text, notes). Blank where that column is empty.</div>
                 </div>
-                <input type="checkbox" id="blank-mode-enabled" class="switch" checked>
+                <input type="checkbox" id="third-mode-enabled" class="switch" checked>
             </label>
 
             <label class="toggle-row">
@@ -134,6 +135,22 @@
                     <div class="toggle-hint">Only applies when TTS is playing.</div>
                 </div>
                 <input type="checkbox" id="continue-tts-on-page-turn" class="switch">
+            </label>
+
+            <label class="toggle-row">
+                <div class="toggle-label">
+                    <div class="toggle-title">Speech continues into the next lesson</div>
+                    <div class="toggle-hint">Off: when speech reaches the end of a lesson, you see the end card instead.</div>
+                </div>
+                <input type="checkbox" id="auto-next-lesson" class="switch">
+            </label>
+
+            <label class="toggle-row">
+                <div class="toggle-label">
+                    <div class="toggle-title">Next lesson stays in the same language</div>
+                    <div class="toggle-hint">Off: the next lesson can be in any language.</div>
+                </div>
+                <input type="checkbox" id="next-same-language" class="switch" checked>
             </label>
         </div>
 
@@ -220,6 +237,8 @@
             <label for="l2-language">Original language (L2)</label>
             <select id="l2-language">
                 <option value="es-ES" selected>Spanish</option>
+                <option value="en-GB">English (UK)</option>
+                <option value="en-US">English (US)</option>
                 <option value="it-IT">Italian</option>
                 <option value="ru-RU">Russian</option>
                 <option value="ja-JP">Japanese</option>
@@ -233,6 +252,7 @@
             <label for="l1-language">Translation language (L1)</label>
             <select id="l1-language">
                 <option value="en-GB" selected>English</option>
+                <option value="en-US">English (US)</option>
                 <option value="es-ES">Spanish</option>
                 <option value="it-IT">Italian</option>
                 <option value="ru-RU">Russian</option>
@@ -253,6 +273,7 @@
             <label for="excel-file" class="file-picker-label" tabindex="0" role="button">Choose file</label>
             <input type="file" id="excel-file" accept=".xlsx,.xls,.csv" hidden>
             <div id="file-name-display" class="file-name">No file selected</div>
+            <div class="file-hint">Column A: translation (L1) · Column B: original (L2) · Column C: third mode, optional (romanised text, notes)</div>
         </div>
 
         <button id="import-confirm-button" class="primary-button" disabled>
@@ -262,8 +283,29 @@
     </div>
 </section>
 
+<!-- ═══════════ GO TO PAGE ═══════════ -->
+<section id="goto-panel" class="sheet" role="dialog" aria-modal="true" aria-label="Go to page" hidden>
+    <div class="sheet-card">
+        <div class="sheet-header">
+            <h2>Go to page</h2>
+            <button type="button" class="icon-btn" id="goto-close" title="Close" aria-label="Close">
+                <svg width="20" height="20"><use href="#i-close"/></svg>
+            </button>
+        </div>
+        <div class="goto-row">
+            <input type="number" id="goto-input" min="1" inputmode="numeric" aria-label="Page number">
+            <span id="goto-total">of 1</span>
+            <button type="button" class="sheet-button" id="goto-go">Go</button>
+        </div>
+        <div class="goto-shortcuts">
+            <button type="button" class="sheet-button" id="goto-start">Back to start</button>
+            <button type="button" class="sheet-button" id="goto-end">Go to end</button>
+        </div>
+    </div>
+</section>
+
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<script src="app.js?v=23"></script>
+<script src="app.js?v=24"></script>
 
 </body>
 </html>

@@ -2,7 +2,7 @@
 //  SWITCHREADER — parallel-text lesson reader
 // ═══════════════════════════════════════════════════════════════
 
-const APP_BUILD = "2026-11-22e";   // shown at the bottom of Settings: tells you which build is running
+const APP_BUILD = "2026-11-22f";   // shown at the bottom of Settings: tells you which build is running
 
 // Some browsers have no text-to-speech at all. Remember that, and give the
 // rest of the code a harmless stand-in so the app still loads and reads.
@@ -21,6 +21,7 @@ if (!("speechSynthesis" in window)) {
 
 const languageNames = {
     "en-GB": "English",
+    "en-US": "English (US)",
     "es-ES": "Spanish",
     "it-IT": "Italian",
     "ru-RU": "Russian",
@@ -110,10 +111,23 @@ function positionKey(lessonId) {
     return "switchreader-pos-" + lessonId;
 }
 
+// The last page of every lesson is an "end card" (buttons for what to do
+// next). It holds no sentences. These helpers tell it apart from real pages.
+function makeEndPage(totalSentences) {
+    return { l2: [], l1: [], l3: [], isEnd: true,
+             startUnitIndex: readingUnits.length, endUnitIndex: readingUnits.length,
+             startSentence: totalSentences };
+}
+
+function realPageCount() {
+    return pages.length > 0 && pages[pages.length - 1].isEnd ? pages.length - 1 : pages.length;
+}
+
 // The lesson-wide number of the sentence you are on right now.
 function currentGlobalSentence() {
     const page = pages[currentPage];
     if (!page || typeof page.startSentence !== "number") return 0;
+    if (page.isEnd) return Math.max(0, page.startSentence - 1);   // on the end card: the last sentence
     const within = Math.max(0, Math.min(currentSentenceIndex, page.l2.length - 1));
     return page.startSentence + within;
 }
@@ -121,9 +135,10 @@ function currentGlobalSentence() {
 // Turn a lesson-wide sentence number back into a page and a sentence on it,
 // using the pages as they are laid out right now.
 function locateGlobalSentence(globalSentence) {
-    if (pages.length === 0) return { page: 0, sentence: 0 };
+    const realPages = realPageCount();
+    if (realPages === 0) return { page: 0, sentence: 0 };
     let pageIndex = 0;
-    for (let i = 0; i < pages.length; i++) {
+    for (let i = 0; i < realPages; i++) {
         if (pages[i].startSentence <= globalSentence) pageIndex = i;
         else break;
     }
@@ -151,8 +166,8 @@ function loadSavedPosition(lesson) {
 
     // Older versions saved a page number inside the lesson. Use it once.
     const old = lesson.position;
-    if (old && pages.length > 0) {
-        const pageIndex = Math.max(0, Math.min(old.page || 0, pages.length - 1));
+    if (old && realPageCount() > 0) {
+        const pageIndex = Math.max(0, Math.min(old.page || 0, realPageCount() - 1));
         const page = pages[pageIndex];
         const within = Math.max(0, Math.min(old.sentence || 0, page.l2.length - 1));
         return {
@@ -219,6 +234,7 @@ const modeLabel = document.getElementById("mode-label");
 const pageNumber = document.getElementById("page-number");
 const scrollUpButton = document.getElementById("scroll-up");
 const scrollDownButton = document.getElementById("scroll-down");
+const gotoPanel = document.getElementById("goto-panel");
 
 const ttsButton = document.getElementById("tts-toggle");
 const ttsIcon = document.getElementById("tts-toggle-icon");
@@ -289,14 +305,16 @@ ttsHighlightCheckbox.addEventListener("change", function() {
     if (!readerScreen.hidden) displayPage();
 });
 
-// Blank mode
-const blankModeCheckbox = document.getElementById("blank-mode-enabled");
-let blankModeEnabled = localStorage.getItem("blankModeEnabled") !== "false";
-blankModeCheckbox.checked = blankModeEnabled;
-blankModeCheckbox.addEventListener("change", function() {
-    blankModeEnabled = blankModeCheckbox.checked;
-    localStorage.setItem("blankModeEnabled", blankModeEnabled);
-    if (!blankModeEnabled && displayMode === 0) displayMode = 1;
+// Third mode (the optional third spreadsheet column: romanised text, notes).
+// An existing choice saved under its old name, "blankModeEnabled", carries over.
+const thirdModeCheckbox = document.getElementById("third-mode-enabled");
+let thirdModeEnabled = (localStorage.getItem("thirdModeEnabled") ??
+                        localStorage.getItem("blankModeEnabled")) !== "false";
+thirdModeCheckbox.checked = thirdModeEnabled;
+thirdModeCheckbox.addEventListener("change", function() {
+    thirdModeEnabled = thirdModeCheckbox.checked;
+    localStorage.setItem("thirdModeEnabled", thirdModeEnabled);
+    if (!thirdModeEnabled && displayMode === 0) displayMode = 1;
     if (!readerScreen.hidden) displayPage();
 });
 
@@ -316,6 +334,26 @@ continueTtsOnPageTurnCheckbox.checked = continueTtsOnPageTurn;
 continueTtsOnPageTurnCheckbox.addEventListener("change", function() {
     continueTtsOnPageTurn = continueTtsOnPageTurnCheckbox.checked;
     localStorage.setItem("continueTtsOnPageTurn", continueTtsOnPageTurn);
+});
+
+// When speech reaches the end of a lesson: show the end card (default),
+// or carry straight on into the next lesson.
+const autoNextLessonCheckbox = document.getElementById("auto-next-lesson");
+let autoNextLesson = localStorage.getItem("autoNextLesson") === "true";
+autoNextLessonCheckbox.checked = autoNextLesson;
+autoNextLessonCheckbox.addEventListener("change", function() {
+    autoNextLesson = autoNextLessonCheckbox.checked;
+    localStorage.setItem("autoNextLesson", autoNextLesson);
+});
+
+// Which lessons count as "next": only ones in the same language (default), or any.
+const nextSameLanguageCheckbox = document.getElementById("next-same-language");
+let nextSameLanguage = localStorage.getItem("nextSameLanguage") !== "false";
+nextSameLanguageCheckbox.checked = nextSameLanguage;
+nextSameLanguageCheckbox.addEventListener("change", function() {
+    nextSameLanguage = nextSameLanguageCheckbox.checked;
+    localStorage.setItem("nextSameLanguage", nextSameLanguage);
+    if (!readerScreen.hidden) displayPage();      // the end card may offer a different lesson now
 });
 
 // Follow my place when switching language
@@ -424,6 +462,7 @@ function showReaderScreen() {
 function closeAllModals() {
     settingsPanel.hidden = true;
     importPanel.hidden = true;
+    gotoPanel.hidden = true;
 }
 
 function toggleSettings() {
@@ -524,13 +563,23 @@ function deleteLesson(lessonId) {
 //  OPENING A LESSON
 // ═══════════════════════════════════════════════════════════════
 
-function openLesson(lessonId) {
+// options.replace   : swap the current history entry (moving from one lesson to the next)
+// options.fromStart : ignore the saved place and begin at the first sentence
+// options.autoplay  : start reading aloud straight away
+function openLesson(lessonId, options = {}) {
     const lesson = library.find(l => l.id === lessonId);
     if (!lesson) return;
 
+    if (currentLessonId) {              // moving on from another lesson: silence it
+        cancelSpeech();
+        isSpeaking = false;
+        ttsStopped = false;
+        setTtsButtonState("play");
+    }
     saveCurrentPosition();
 
-    history.pushState({ view: 'reader' }, '', '#reader');
+    if (options.replace) history.replaceState({ view: 'reader' }, '', '#reader');
+    else history.pushState({ view: 'reader' }, '', '#reader');
 
     currentLessonId = lessonId;
     currentBook = {
@@ -540,10 +589,13 @@ function openLesson(lessonId) {
         l1Name: lesson.l1Name
     };
 
-    readingUnits = lesson.units.map(u => ({
-        l2: Array.isArray(u.l2) ? u.l2 : [u.l2 || ""],
-        l1: Array.isArray(u.l1) ? u.l1 : [u.l1 || ""]
-    }));
+    readingUnits = lesson.units.map(u => {
+        const l2 = Array.isArray(u.l2) ? u.l2 : [u.l2 || ""];
+        const l1 = Array.isArray(u.l1) ? u.l1 : [u.l1 || ""];
+        const l3Raw = Array.isArray(u.l3) ? u.l3 : (u.l3 ? [u.l3] : []);
+        const l3 = l2.map((_, i) => String(l3Raw[i] ?? ""));   // one entry per sentence, "" where empty
+        return { l2, l1, l3 };
+    });
 
     pages = [];
     lastPageKey = "";
@@ -559,18 +611,20 @@ function openLesson(lessonId) {
 
     // Restore saved position
     const saved = loadSavedPosition(lesson);
-    const place = locateGlobalSentence(saved.sentence);
+    const place = locateGlobalSentence(options.fromStart ? 0 : saved.sentence);
     currentPage = place.page;
     currentSentenceIndex = place.sentence;
 
     let restoredMode = saved.mode;
-    if (restoredMode === 0 && !blankModeEnabled) restoredMode = 2;
+    if (restoredMode === 0 && !thirdModeEnabled) restoredMode = 2;
     displayMode = restoredMode;
 
     displayPage();
+    if (options.autoplay) startTts();
 }
 
 function goHome() {
+    gotoPanel.hidden = true;
     cancelSpeech();
     isSpeaking = false;
     ttsStopped = false;
@@ -670,8 +724,8 @@ importConfirmButton.addEventListener("click", async function() {
         renderLibrary();
     } catch (error) {
         alert("There was a problem reading this file. Please check that " +
-              "it is an Excel or CSV file with the original language in " +
-              "column A and the translation in column B.");
+              "it is an Excel or CSV file with the translation in column A " +
+              "and the original language in column B (column C is optional).");
         console.error(error);
     }
 });
@@ -692,21 +746,23 @@ async function parseExcelFile(file, l2Code, l1Code) {
     const l2Headings = ["l2", l2Name.toLowerCase(), l2Code.toLowerCase()];
     const l1Headings = ["l1", l1Name.toLowerCase(), l1Code.toLowerCase()];
 
+    // Columns: A = translation (L1), B = original (L2), C = third mode (optional).
     let startRow = 0;
     if (rows.length > 0) {
         const firstColumn = normaliseHeading(rows[0][0]);
         const secondColumn = normaliseHeading(rows[0][1]);
-        if (l2Headings.includes(firstColumn) && l1Headings.includes(secondColumn)) {
+        if (l1Headings.includes(firstColumn) && l2Headings.includes(secondColumn)) {
             startRow = 1;
         }
     }
 
     return rows.slice(startRow)
         .map(row => ({
-            l2: [String(row[0] ?? "").trim()],
-            l1: [String(row[1] ?? "").trim()]
+            l1: [String(row[0] ?? "").trim()],
+            l2: [String(row[1] ?? "").trim()],
+            l3: [String(row[2] ?? "").trim()]
         }))
-        .filter(unit => unit.l2[0] !== "" || unit.l1[0] !== "");
+        .filter(unit => unit.l1[0] !== "" || unit.l2[0] !== "" || unit.l3[0] !== "");
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -721,6 +777,7 @@ function paginateReadingUnits() {
     // Remember exactly which sentence you are on, so we can find it again
     // after the pages are rebuilt.
     const anchorSentence = currentGlobalSentence();
+    const wasOnEnd = !!pages[currentPage]?.isEnd;
 
     if (availableHeight <= 0 || !availableWidth) {
         // Can't measure right now: fall back to one unit per page.
@@ -728,17 +785,21 @@ function paginateReadingUnits() {
         pages = readingUnits.map(function(unit, index) {
             const l2 = Array.isArray(unit.l2) ? unit.l2 : [unit.l2 || ""];
             const l1 = Array.isArray(unit.l1) ? unit.l1 : [unit.l1 || ""];
+            const l3 = Array.isArray(unit.l3) ? unit.l3 : [];
             const page = { l2: l2.slice(), l1: l1.slice(),
+                           l3: l2.map((_, i) => l3[i] ?? ""),
                            startUnitIndex: index, endUnitIndex: index,
                            startSentence: counter };
             counter += l2.length;
             return page;
         });
+        pages.push(makeEndPage(readingUnits.reduce((sum, unit) =>
+            sum + (Array.isArray(unit.l2) ? unit.l2.length : 1), 0)));
         lastPaginatedWidth = 0;
         lastPaginatedHeight = 0;
         const fallbackPlace = locateGlobalSentence(anchorSentence);
-        currentPage = fallbackPlace.page;
-        currentSentenceIndex = fallbackPlace.sentence;
+        currentPage = wasOnEnd ? pages.length - 1 : fallbackPlace.page;
+        currentSentenceIndex = wasOnEnd ? 0 : fallbackPlace.sentence;
         return;
     }
     const textStyle = getComputedStyle(readingArea);
@@ -778,6 +839,7 @@ function paginateReadingUnits() {
     let currentPageData = null;
     let l2Height = 0;
     let l1Height = 0;
+    let l3Height = 0;
     let sentenceCounter = 0;   // L2 sentences seen so far, across the whole lesson
 
     function finishPage(endIndex) {
@@ -790,22 +852,34 @@ function paginateReadingUnits() {
         const l2Texts = Array.isArray(unit.l2) ? unit.l2 : [unit.l2 || ""];
         const l1Texts = Array.isArray(unit.l1) ? unit.l1 : [unit.l1 || ""];
 
+        // Third mode text: one entry per sentence ("" where empty). It only
+        // takes up room on the page if this unit really has some.
+        const l3Raw = Array.isArray(unit.l3) ? unit.l3 : [];
+        const l3Texts = l2Texts.map((_, i) => String(l3Raw[i] ?? ""));
+        const hasL3 = l3Texts.some(Boolean);
+
         const newL2Height = measureTexts(l2Texts, currentBook?.l2Code);
         const newL1Height = measureTexts(l1Texts, currentBook?.l1Code);
+        const newL3Height = hasL3
+            ? measureTexts(l3Texts.map(t => t || "\u00a0"))
+            : 0;
 
+        // Every mode shares the same page breaks, so the tallest of the three decides.
         const wouldOverflow =
-            Math.max(l2Height + newL2Height, l1Height + newL1Height) > availableHeight;
+            Math.max(l2Height + newL2Height, l1Height + newL1Height,
+                     l3Height + newL3Height) > availableHeight;
 
         if (wouldOverflow && currentPageData) {
             finishPage(index - 1);
             currentPageData = null;
             l2Height = 0;
             l1Height = 0;
+            l3Height = 0;
         }
 
         if (!currentPageData) {
             currentPageData = {
-                l2: [], l1: [],
+                l2: [], l1: [], l3: [],
                 startUnitIndex: index,
                 startSentence: sentenceCounter
             };
@@ -813,22 +887,30 @@ function paginateReadingUnits() {
 
         currentPageData.l2.push(...l2Texts);
         currentPageData.l1.push(...l1Texts);
+        currentPageData.l3.push(...l3Texts);
         l2Height += newL2Height;
         l1Height += newL1Height;
+        l3Height += newL3Height;
         sentenceCounter += l2Texts.length;
     });
 
     finishPage(readingUnits.length - 1);
     measureBox.remove();
 
+    newPages.push(makeEndPage(sentenceCounter));   // the end card is always the last page
     pages = newPages;
     lastPaginatedWidth = readingArea.clientWidth;
     lastPaginatedHeight = readingArea.clientHeight;
 
     // Put you back on the same sentence, wherever it landed in the new pages.
-    const place = locateGlobalSentence(anchorSentence);
-    currentPage = place.page;
-    currentSentenceIndex = place.sentence;
+    if (wasOnEnd) {
+        currentPage = pages.length - 1;          // stay on the end card
+        currentSentenceIndex = 0;
+    } else {
+        const place = locateGlobalSentence(anchorSentence);
+        currentPage = place.page;
+        currentSentenceIndex = place.sentence;
+    }
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -843,6 +925,10 @@ function displayPage() {
         updateScrollButtons();
         return;
     }
+
+    const page = pages[currentPage];
+    const onEnd = !!page.isEnd;                       // the end card, not a page of text
+    const thirdHasText = !onEnd && (page.l3 || []).some(Boolean);
 
     // Rebuilding the text (which happens whenever the highlight moves) would
     // normally snap a scrolled page back to the top. Note where we were, so
@@ -862,7 +948,7 @@ function displayPage() {
         heldReadingPoint = null;
         scrollByMode = {};
     }
-    if (modeSwitched && lastRenderMode !== 0) {
+    if (modeSwitched && readingArea.children.length > 0) {
         // Leaving a language: remember where we were in it, before it is redrawn.
         scrollByMode[lastRenderMode] = previousScrollTop;
         heldReadingPoint = captureReadingPoint(previousScrollTop);
@@ -870,35 +956,36 @@ function displayPage() {
 
     readingArea.innerHTML = "";
 
-    const texts = displayMode === 1
-        ? pages[currentPage].l1
-        : displayMode === 2
-            ? pages[currentPage].l2
-            : [];
+    // Which text to show: L1, L2, or the third mode (only if it has any text on this page).
+    const texts = onEnd ? []
+        : displayMode === 1 ? page.l1
+        : displayMode === 2 ? page.l2
+        : (thirdHasText ? page.l3 : []);
 
     // Tell the browser which language this text is in, so it picks the right
     // letter shapes (this matters most for Japanese) and screen readers
     // pronounce it properly.
-    const textLang = displayMode === 1 ? currentBook?.l1Code
+    const textLang = onEnd ? ""
+                   : displayMode === 1 ? currentBook?.l1Code
                    : displayMode === 2 ? currentBook?.l2Code : "";
     if (textLang) readingArea.setAttribute("lang", textLang);
     else readingArea.removeAttribute("lang");
 
-    readingArea.innerHTML = texts.map((sentence, index) => {
+    readingArea.innerHTML = onEnd ? buildEndCardHtml() : texts.map((sentence, index) => {
         const highlight =
             ttsHighlightEnabled && index === currentSentenceIndex
                 ? ' class="tts-current-sentence"'
                 : '';
-        return `<p${highlight}>${escapeHtml(sentence)}</p>`;
+        // In the third mode, an empty cell still keeps its line so the rest stays lined up.
+        const shown = escapeHtml(sentence) || (displayMode === 0 ? "&nbsp;" : "");
+        return `<p${highlight}>${shown}</p>`;
     }).join("");
 
     if (sameView) {
         readingArea.scrollTop = previousScrollTop;
     } else if (modeSwitched) {
-        if (displayMode !== 0) {
-            if (followTogether) applyReadingPoint(heldReadingPoint);
-            else readingArea.scrollTop = scrollByMode[displayMode] || 0;
-        }
+        if (followTogether) applyReadingPoint(heldReadingPoint);
+        else readingArea.scrollTop = scrollByMode[displayMode] || 0;
     } else {
         readingArea.scrollTop = 0;              // a different page starts at the top
     }
@@ -906,7 +993,7 @@ function displayPage() {
         clearTimeout(pendingScrollTimer);
         pendingScrollTarget = null;
     }
-    if (displayMode !== 0 && (!samePage || sentenceMoved)) {
+    if (!onEnd && (!samePage || sentenceMoved)) {
         keepCurrentSentenceInView(samePage);    // glide if still on the same page
     }
     lastPageKey = pageKey;
@@ -916,15 +1003,15 @@ function displayPage() {
 
     const l1Short = (currentBook?.l1Code || "").split("-")[0].toUpperCase();
     const l2Short = (currentBook?.l2Code || "").split("-")[0].toUpperCase();
-    const modeLabels = ["—", l1Short, l2Short];
+    const modeLabels = ["Aa", l1Short, l2Short];   // Aa = third mode
 
     modeLabel.textContent = modeLabels[displayMode] || "";
-    modeLabel.classList.toggle("blank", displayMode === 0);
+    modeLabel.classList.toggle("blank", displayMode === 0 && !thirdHasText);   // dim when there is nothing to show
     modeLabel.setAttribute("aria-label",
-        "Display mode: " + (displayMode === 0 ? "blank" : modeLabels[displayMode]) +
+        "Display mode: " + (displayMode === 0 ? "third mode" : modeLabels[displayMode]) +
         ". Activate to change.");
 
-    pageNumber.textContent = `${currentPage + 1} / ${pages.length}`;
+    pageNumber.textContent = onEnd ? "End" : `${currentPage + 1} / ${realPageCount()}`;
 
     saveCurrentPositionSoon();
 }
@@ -1007,7 +1094,7 @@ function keepCurrentSentenceInView(smooth) {
 // scroll down in steps so the spoken part stays on screen. This only ever
 // moves downward, and only for sentences taller than most of the screen.
 function followSpokenPosition(charIndex, textLength) {
-    if (displayMode === 0 || textLength <= 0) return;
+    if (textLength <= 0) return;
     if (readingArea.scrollHeight <= readingArea.clientHeight + 2) return;
     const paragraph = readingArea.children[currentSentenceIndex];
     if (!paragraph) return;
@@ -1086,12 +1173,15 @@ function applyReadingPoint(point) {
 //  NAVIGATION HELPERS
 // ═══════════════════════════════════════════════════════════════
 
+// Modes: 1 = L1, 2 = L2, 0 = third mode (notes / romanised text).
+// Order when swiping or tapping the mode label: L1 -> L2 -> third -> L1.
 function cycleDisplayMode(direction) {
-    if (blankModeEnabled) {
-        displayMode = (displayMode + (direction === -1 ? 2 : 1)) % 3;
-    } else {
-        displayMode = displayMode === 1 ? 2 : 1;
-    }
+    if (pages[currentPage]?.isEnd) return;          // nothing to switch on the end card
+    const order = thirdModeEnabled ? [1, 2, 0] : [1, 2];
+    let position = order.indexOf(displayMode);
+    if (position === -1) position = 0;
+    position = (position + (direction === -1 ? order.length - 1 : 1)) % order.length;
+    displayMode = order[position];
     ttsLog("mode -> " + displayMode);
     displayPage();
 }
@@ -1225,7 +1315,8 @@ function speakNextSentence(attempt = 0) {
     const sentences = pages[currentPage].l2;
 
     if (currentSentenceIndex >= sentences.length) {
-        if (currentPage < pages.length - 1) {
+        const nextPage = pages[currentPage + 1];
+        if (nextPage && !nextPage.isEnd) {
             currentPage++;
             currentSentenceIndex = 0;
             ttsPage = currentPage;
@@ -1234,11 +1325,7 @@ function speakNextSentence(attempt = 0) {
             return;
         }
 
-        currentSentenceIndex = sentences.length - 1;
-        isSpeaking = false;
-        ttsStopped = false;
-        currentUtterance = null;
-        setTtsButtonState("play");
+        finishLessonSpeech();
         return;
     }
 
@@ -1320,7 +1407,7 @@ function speakNextSentence(attempt = 0) {
     window.speechSynthesis.speak(utterance);
 
     // THEN update the UI (once per sentence)
-    if (displayMode !== 0) displayPage();
+    displayPage();
 
     // Watchdog: some engines drop the utterance without any event at all.
     setTimeout(function() {
@@ -1343,7 +1430,7 @@ function changePageWithTts(changeFn) {
     currentSentenceIndex = 0;
     ttsPage = currentPage;
 
-    if (wasPlaying && continueTtsOnPageTurn) {
+    if (wasPlaying && continueTtsOnPageTurn && !pages[currentPage]?.isEnd) {
         startTts();
     } else {
         isSpeaking = false;
@@ -1362,6 +1449,19 @@ function goToNextPage() {
 }
 
 function moveToSentence(direction) {
+    if (pages[currentPage]?.isEnd) {                // on the end card: Up goes back to the text
+        if (direction < 0 && realPageCount() > 0) {
+            cancelSpeech();
+            isSpeaking = false;
+            ttsStopped = false;
+            setTtsButtonState("play");
+            currentPage = realPageCount() - 1;
+            currentSentenceIndex = pages[currentPage].l2.length - 1;
+            displayPage();
+        }
+        return;
+    }
+
     const wasPlaying = isSpeaking && !ttsStopped;
     
     currentSentenceIndex += direction;
@@ -1377,7 +1477,7 @@ function moveToSentence(direction) {
     }
 
     if (currentSentenceIndex >= pages[currentPage].l2.length) {
-        if (currentPage < pages.length - 1) {
+        if (currentPage < realPageCount() - 1) {
             currentPage++;
             currentSentenceIndex = 0;
         } else {
@@ -1431,6 +1531,140 @@ function jumpToSentence(index) {
 }
 
 // ═══════════════════════════════════════════════════════════════
+//  END OF LESSON, AND GOING TO A PAGE
+// ═══════════════════════════════════════════════════════════════
+
+function goToStart() {
+    changePageWithTts(function() { currentPage = 0; });
+}
+
+function goToEnd() {
+    changePageWithTts(function() { currentPage = pages.length - 1; });   // the end card
+}
+
+function goToPage(pageIndex) {
+    const count = realPageCount();
+    if (count === 0) return;
+    const target = Math.max(0, Math.min(pageIndex, count - 1));
+    changePageWithTts(function() { currentPage = target; });
+}
+
+// The next lesson is the one added just after this one. With "stays in the
+// same language" on (the default) it skips lessons in other languages.
+function findNextLesson() {
+    const current = library.find(l => l.id === currentLessonId);
+    if (!current) return null;
+
+    const languageOf = code => (code || "").split("-")[0].toLowerCase();
+    const inOrder = library
+        .map((lesson, index) => ({ lesson: lesson, index: index }))
+        .sort((a, b) => ((a.lesson.createdAt || 0) - (b.lesson.createdAt || 0)) || (a.index - b.index))
+        .map(entry => entry.lesson);
+
+    const start = inOrder.findIndex(l => l.id === current.id);
+    for (let i = start + 1; i < inOrder.length; i++) {
+        const candidate = inOrder[i];
+        if (!nextSameLanguage || languageOf(candidate.l2Code) === languageOf(current.l2Code)) {
+            return candidate;
+        }
+    }
+    return null;
+}
+
+function buildEndCardHtml() {
+    const lesson = library.find(l => l.id === currentLessonId);
+    const next = findNextLesson();
+
+    let html = '<div class="end-card">' +
+        '<div class="end-title">End of lesson</div>' +
+        '<div class="end-lesson">' + escapeHtml(lesson ? lesson.title : "") + '</div>' +
+        '<button type="button" class="primary-button" data-end-action="restart">Back to start</button>';
+
+    if (next) {
+        html += '<button type="button" class="primary-button" data-end-action="next">' +
+                'Next lesson: ' + escapeHtml(next.title) + '</button>';
+    } else {
+        const languageName = currentBook && currentBook.l2Name;
+        html += '<div class="end-hint">No more ' +
+                (nextSameLanguage && languageName ? escapeHtml(languageName) + ' ' : '') +
+                'lessons.</div>';
+    }
+    return html + '</div>';
+}
+
+// Speech has read the last sentence: carry on into the next lesson, or show the end card.
+function finishLessonSpeech() {
+    currentUtterance = null;
+    isSpeaking = false;
+    ttsStopped = false;
+    setTtsButtonState("play");
+
+    const next = autoNextLesson ? findNextLesson() : null;
+    if (next) {
+        ttsLog("end of lesson -> next lesson");
+        openLesson(next.id, { replace: true, fromStart: true, autoplay: true });
+        return;
+    }
+
+    currentPage = pages.length - 1;                 // the end card
+    currentSentenceIndex = 0;
+    displayPage();
+}
+
+// Buttons on the end card
+readingArea.addEventListener("click", function(event) {
+    const button = event.target.closest("[data-end-action]");
+    if (!button) return;
+    if (button.dataset.endAction === "restart") {
+        goToStart();
+    } else if (button.dataset.endAction === "next") {
+        const next = findNextLesson();
+        if (next) openLesson(next.id, { replace: true, fromStart: true });
+    }
+});
+
+// The page number is a button: tap it to jump around.
+const gotoInput = document.getElementById("goto-input");
+const gotoTotal = document.getElementById("goto-total");
+
+function openGotoPanel() {
+    if (!currentLessonId || realPageCount() === 0) return;
+    gotoTotal.textContent = "of " + realPageCount();
+    gotoInput.max = realPageCount();
+    gotoInput.value = pages[currentPage]?.isEnd ? "" : String(currentPage + 1);
+    gotoPanel.hidden = false;
+}
+
+function closeGotoPanel() {
+    gotoPanel.hidden = true;
+}
+
+function submitGoto() {
+    const number = parseInt(gotoInput.value, 10);
+    if (!Number.isFinite(number)) return;
+    closeGotoPanel();
+    goToPage(number - 1);
+}
+
+pageNumber.addEventListener("click", openGotoPanel);
+document.getElementById("goto-close").addEventListener("click", closeGotoPanel);
+gotoPanel.addEventListener("click", function(event) {
+    if (event.target === gotoPanel) closeGotoPanel();        // tap outside the card
+});
+document.getElementById("goto-go").addEventListener("click", submitGoto);
+gotoInput.addEventListener("keydown", function(event) {
+    if (event.key === "Enter") { event.preventDefault(); submitGoto(); }
+});
+document.getElementById("goto-start").addEventListener("click", function() {
+    closeGotoPanel();
+    goToStart();
+});
+document.getElementById("goto-end").addEventListener("click", function() {
+    closeGotoPanel();
+    goToEnd();
+});
+
+// ═══════════════════════════════════════════════════════════════
 //  TTS BUTTON LISTENER
 // ═══════════════════════════════════════════════════════════════
 
@@ -1448,6 +1682,10 @@ ttsButton.addEventListener("click", function() {
         return;
     }
 
+    if (pages[currentPage]?.isEnd) {        // play on the end card = read it again from the start
+        currentPage = 0;
+        currentSentenceIndex = 0;
+    }
     startTts();
 });
 
@@ -1556,11 +1794,13 @@ document.addEventListener("keydown", function(event) {
     if (event.key === "Escape") {
         if (!settingsPanel.hidden) { settingsPanel.hidden = true; return; }
         if (!importPanel.hidden) { importPanel.hidden = true; return; }
+        if (!gotoPanel.hidden) { gotoPanel.hidden = true; return; }
     }
 
     if (readerScreen.hidden) return;
     if (!settingsPanel.hidden) return;
     if (!importPanel.hidden) return;
+    if (!gotoPanel.hidden) return;
 
     if (event.target.matches("input, textarea, select") ||
         event.target.isContentEditable) return;
