@@ -2,7 +2,7 @@
 //  SWITCHREADER — parallel-text lesson reader
 // ═══════════════════════════════════════════════════════════════
 
-const APP_BUILD = "2026-11-22a";   // shown at the bottom of Settings: tells you which build is running
+const APP_BUILD = "2026-11-22b";   // shown at the bottom of Settings: tells you which build is running
 
 // Some browsers have no text-to-speech at all. Remember that, and give the
 // rest of the code a harmless stand-in so the app still loads and reads.
@@ -42,6 +42,8 @@ let readingUnits = [];         // raw units of the currently open lesson
 let pages = [];                // paginated pages of the currently open lesson
 let displayMode = 2;
 let currentPage = 0;
+let lastPaginatedWidth = 0;    // text-box size the pages were last built for
+let lastPaginatedHeight = 0;
 
 function loadLibrary() {
     const raw = localStorage.getItem("switchreader-library");
@@ -93,16 +95,79 @@ function seedLibraryIfEmpty() {
     saveLibrary();
 }
 
+// Your place is stored as "sentence number N of the lesson" (counting
+// L2 sentences from the very start), not as a page number. Page numbers
+// change when the font size or screen shape changes; sentence numbers don't.
+// It lives in its own tiny entry so saving it never rewrites the whole library.
+function positionKey(lessonId) {
+    return "switchreader-pos-" + lessonId;
+}
+
+// The lesson-wide number of the sentence you are on right now.
+function currentGlobalSentence() {
+    const page = pages[currentPage];
+    if (!page || typeof page.startSentence !== "number") return 0;
+    const within = Math.max(0, Math.min(currentSentenceIndex, page.l2.length - 1));
+    return page.startSentence + within;
+}
+
+// Turn a lesson-wide sentence number back into a page and a sentence on it,
+// using the pages as they are laid out right now.
+function locateGlobalSentence(globalSentence) {
+    if (pages.length === 0) return { page: 0, sentence: 0 };
+    let pageIndex = 0;
+    for (let i = 0; i < pages.length; i++) {
+        if (pages[i].startSentence <= globalSentence) pageIndex = i;
+        else break;
+    }
+    const page = pages[pageIndex];
+    const within = Math.max(0, Math.min(globalSentence - page.startSentence,
+                                        page.l2.length - 1));
+    return { page: pageIndex, sentence: within };
+}
+
+function loadSavedPosition(lesson) {
+    try {
+        const raw = localStorage.getItem(positionKey(lesson.id));
+        if (raw) {
+            const saved = JSON.parse(raw);
+            if (saved && typeof saved.sentence === "number") {
+                return {
+                    sentence: Math.max(0, Math.floor(saved.sentence)),
+                    mode: [0, 1, 2].includes(saved.mode) ? saved.mode : 2
+                };
+            }
+        }
+    } catch (e) {
+        console.error("Could not read saved position:", e);
+    }
+
+    // Older versions saved a page number inside the lesson. Use it once.
+    const old = lesson.position;
+    if (old && pages.length > 0) {
+        const pageIndex = Math.max(0, Math.min(old.page || 0, pages.length - 1));
+        const page = pages[pageIndex];
+        const within = Math.max(0, Math.min(old.sentence || 0, page.l2.length - 1));
+        return {
+            sentence: page.startSentence + within,
+            mode: [0, 1, 2].includes(old.mode) ? old.mode : 2
+        };
+    }
+
+    return { sentence: 0, mode: 2 };
+}
+
 function saveCurrentPosition() {
-    if (!currentLessonId) return;
-    const lesson = library.find(l => l.id === currentLessonId);
-    if (!lesson) return;
-    lesson.position = {
-        page: currentPage,
-        sentence: currentSentenceIndex,
-        mode: displayMode
-    };
-    saveLibrary();
+    if (!currentLessonId || pages.length === 0) return;
+    try {
+        localStorage.setItem(positionKey(currentLessonId), JSON.stringify({
+            v: 2,
+            sentence: currentGlobalSentence(),
+            mode: displayMode
+        }));
+    } catch (e) {
+        console.error("Could not save position:", e);
+    }
 }
 
 let savePositionTimeout = null;
@@ -155,6 +220,18 @@ const fontSizeValue = document.getElementById("font-size-value");
 const lineSpacingSlider = document.getElementById("line-spacing");
 const lineSpacingValue = document.getElementById("line-spacing-value");
 
+// Re-flow the pages after a short pause, so dragging a slider doesn't
+// rebuild every page on every tiny movement.
+let relayoutTimer = null;
+function relayoutSoon() {
+    clearTimeout(relayoutTimer);
+    relayoutTimer = setTimeout(function() {
+        if (readerScreen.hidden) return;
+        paginateReadingUnits();
+        displayPage();
+    }, 150);
+}
+
 // Font size
 const savedFontSize = localStorage.getItem("switchreader-font-size");
 if (savedFontSize !== null) fontSizeSlider.value = savedFontSize;
@@ -165,10 +242,7 @@ fontSizeSlider.addEventListener("input", function() {
     fontSizeValue.textContent = size + "px";
     localStorage.setItem("switchreader-font-size", size);
     
-    if (!readerScreen.hidden) {
-        paginateReadingUnits();
-        displayPage();
-    }
+    if (!readerScreen.hidden) relayoutSoon();
 });
 
 // Initialize the style immediately on load
@@ -184,10 +258,7 @@ lineSpacingSlider.addEventListener("input", function() {
     lineSpacingValue.textContent = spacing.toFixed(2);
     localStorage.setItem("switchreader-line-spacing", lineSpacingSlider.value);
 
-    if (!readerScreen.hidden) {
-        paginateReadingUnits();
-        displayPage();
-    }
+    if (!readerScreen.hidden) relayoutSoon();
 });
 
 // Initialize the style immediately on load
@@ -412,6 +483,7 @@ function deleteLesson(lessonId) {
 
     library = library.filter(l => l.id !== lessonId);
     saveLibrary();
+    try { localStorage.removeItem(positionKey(lessonId)); } catch (e) {}
 
     if (currentLessonId === lessonId) {
         currentLessonId = null;
@@ -447,6 +519,7 @@ function openLesson(lessonId) {
         l1: Array.isArray(u.l1) ? u.l1 : [u.l1 || ""]
     }));
 
+    pages = [];
     currentPage = 0;
     currentSentenceIndex = 0;
     displayMode = 2;
@@ -458,12 +531,12 @@ function openLesson(lessonId) {
     paginateReadingUnits();
 
     // Restore saved position
-    const pos = lesson.position || { page: 0, sentence: 0, mode: 2 };
-    currentPage = Math.max(0, Math.min(pos.page || 0, pages.length - 1));
-    currentSentenceIndex = Math.max(0,
-        Math.min(pos.sentence || 0, (pages[currentPage]?.l2.length || 1) - 1));
+    const saved = loadSavedPosition(lesson);
+    const place = locateGlobalSentence(saved.sentence);
+    currentPage = place.page;
+    currentSentenceIndex = place.sentence;
 
-    let restoredMode = (typeof pos.mode === "number") ? pos.mode : 2;
+    let restoredMode = saved.mode;
     if (restoredMode === 0 && !blankModeEnabled) restoredMode = 2;
     displayMode = restoredMode;
 
@@ -618,12 +691,29 @@ function paginateReadingUnits() {
     const availableHeight = readingArea.clientHeight - 40;
     const availableWidth = readingArea.clientWidth;
 
-    if (!availableHeight || !availableWidth) {
-        pages = readingUnits;
+    // Remember exactly which sentence you are on, so we can find it again
+    // after the pages are rebuilt.
+    const anchorSentence = currentGlobalSentence();
+
+    if (availableHeight <= 0 || !availableWidth) {
+        // Can't measure right now: fall back to one unit per page.
+        let counter = 0;
+        pages = readingUnits.map(function(unit, index) {
+            const l2 = Array.isArray(unit.l2) ? unit.l2 : [unit.l2 || ""];
+            const l1 = Array.isArray(unit.l1) ? unit.l1 : [unit.l1 || ""];
+            const page = { l2: l2.slice(), l1: l1.slice(),
+                           startUnitIndex: index, endUnitIndex: index,
+                           startSentence: counter };
+            counter += l2.length;
+            return page;
+        });
+        lastPaginatedWidth = 0;
+        lastPaginatedHeight = 0;
+        const fallbackPlace = locateGlobalSentence(anchorSentence);
+        currentPage = fallbackPlace.page;
+        currentSentenceIndex = fallbackPlace.sentence;
         return;
     }
-
-    const currentStart = pages[currentPage]?.startUnitIndex ?? 0;
     const textStyle = getComputedStyle(readingArea);
     const currentFontSize = parseFloat(textStyle.fontSize);
     const paragraphMargin = currentFontSize * 0.8;
@@ -660,6 +750,7 @@ function paginateReadingUnits() {
     let currentPageData = null;
     let l2Height = 0;
     let l1Height = 0;
+    let sentenceCounter = 0;   // L2 sentences seen so far, across the whole lesson
 
     function finishPage(endIndex) {
         if (!currentPageData) return;
@@ -687,7 +778,8 @@ function paginateReadingUnits() {
         if (!currentPageData) {
             currentPageData = {
                 l2: [], l1: [],
-                startUnitIndex: index
+                startUnitIndex: index,
+                startSentence: sentenceCounter
             };
         }
 
@@ -695,19 +787,20 @@ function paginateReadingUnits() {
         currentPageData.l1.push(...l1Texts);
         l2Height += newL2Height;
         l1Height += newL1Height;
+        sentenceCounter += l2Texts.length;
     });
 
     finishPage(readingUnits.length - 1);
     measureBox.remove();
 
     pages = newPages;
+    lastPaginatedWidth = readingArea.clientWidth;
+    lastPaginatedHeight = readingArea.clientHeight;
 
-    currentPage = pages.findIndex(function(page) {
-        return currentStart >= page.startUnitIndex &&
-               currentStart <= page.endUnitIndex;
-    });
-
-    if (currentPage === -1) currentPage = 0;
+    // Put you back on the same sentence, wherever it landed in the new pages.
+    const place = locateGlobalSentence(anchorSentence);
+    currentPage = place.page;
+    currentSentenceIndex = place.sentence;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1240,10 +1333,19 @@ document.addEventListener("keydown", function(event) {
 //  RESIZE
 // ═══════════════════════════════════════════════════════════════
 
+let resizeTimer = null;
 window.addEventListener("resize", function() {
     if (readerScreen.hidden) return;
-    paginateReadingUnits();
-    displayPage();
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(function() {
+        if (readerScreen.hidden) return;
+        // Phone address bars sliding in and out fire "resize" without
+        // changing the text box at all. Only re-flow when it really changed.
+        if (readingArea.clientWidth === lastPaginatedWidth &&
+            readingArea.clientHeight === lastPaginatedHeight) return;
+        paginateReadingUnits();
+        displayPage();
+    }, 200);
 });
 
 window.addEventListener('popstate', function(event) {
@@ -1278,6 +1380,11 @@ history.replaceState({ view: 'home' }, '', '#home');
 
 showHomeScreen();
 
+document.addEventListener("visibilitychange", function() {
+    if (document.visibilityState === "hidden") saveCurrentPosition();
+});
+
 window.addEventListener("pagehide", function() {
+    saveCurrentPosition();
     window.speechSynthesis.cancel();
 });
