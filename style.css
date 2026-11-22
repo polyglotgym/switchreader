@@ -178,6 +178,7 @@ body {
 .reading-area {
     flex: 1;
     min-height: 0;
+    position: relative;   /* lets the scroll arrows sit on top of the text */
     display: flex;
     flex-direction: column;
     padding: 25px 30px;
@@ -697,3 +698,33 @@ body {
     font-size: 13px;
     font-family: inherit;
 }
+
+
+/* SCROLL ARROWS (for a page with more text than fits) */
+
+.scroll-btn {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 5;
+    width: 38px;
+    height: 38px;
+    padding: 0;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(40, 40, 40, 0.9);
+    border: 1px solid #3a3a3a;
+    color: #ccc;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.scroll-btn:hover,
+.scroll-btn:active {
+    background: rgba(64, 64, 64, 0.95);
+}
+
+.scroll-up   { top: 4px; }
+.scroll-down { bottom: 4px; }

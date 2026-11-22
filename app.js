@@ -2,7 +2,7 @@
 //  SWITCHREADER — parallel-text lesson reader
 // ═══════════════════════════════════════════════════════════════
 
-const APP_BUILD = "2026-11-22b";   // shown at the bottom of Settings: tells you which build is running
+const APP_BUILD = "2026-11-22c";   // shown at the bottom of Settings: tells you which build is running
 
 // Some browsers have no text-to-speech at all. Remember that, and give the
 // rest of the code a harmless stand-in so the app still loads and reads.
@@ -44,6 +44,10 @@ let displayMode = 2;
 let currentPage = 0;
 let lastPaginatedWidth = 0;    // text-box size the pages were last built for
 let lastPaginatedHeight = 0;
+let lastRenderKey = "";         // which page/mode/size was drawn last (to keep its scroll position)
+let lastRenderSentence = -1;
+let pendingScrollTarget = null; // where a smooth scroll is heading, if one is in progress
+let pendingScrollTimer = null;
 
 function loadLibrary() {
     const raw = localStorage.getItem("switchreader-library");
@@ -203,6 +207,8 @@ const readingAreaSection = document.querySelector(".reading-area");
 const readingArea = document.getElementById("reading-text");
 const modeLabel = document.getElementById("mode-label");
 const pageNumber = document.getElementById("page-number");
+const scrollUpButton = document.getElementById("scroll-up");
+const scrollDownButton = document.getElementById("scroll-down");
 
 const ttsButton = document.getElementById("tts-toggle");
 const ttsIcon = document.getElementById("tts-toggle-icon");
@@ -520,6 +526,7 @@ function openLesson(lessonId) {
     }));
 
     pages = [];
+    lastRenderKey = "";
     currentPage = 0;
     currentSentenceIndex = 0;
     displayMode = 2;
@@ -812,8 +819,21 @@ function displayPage() {
     if (!pages[currentPage]) {
         readingArea.innerHTML = "";
         pageNumber.textContent = "0 / 0";
+        updateScrollButtons();
         return;
     }
+
+    // Rebuilding the text (which happens whenever the highlight moves) would
+    // normally snap a scrolled page back to the top. Note where we were, so
+    // we can go back there if this is still the same page in the same mode.
+    const renderKey = pages[currentPage].startSentence + ":" + displayMode + ":" +
+                      lastPaginatedWidth + "x" + lastPaginatedHeight + ":" +
+                      readingArea.style.fontSize + ":" + readingArea.style.lineHeight;
+    const sameView = (renderKey === lastRenderKey);
+    const sentenceMoved = (currentSentenceIndex !== lastRenderSentence);
+    const previousScrollTop = (pendingScrollTarget !== null)
+        ? pendingScrollTarget
+        : readingArea.scrollTop;
 
     readingArea.innerHTML = "";
 
@@ -831,6 +851,18 @@ function displayPage() {
         return `<p${highlight}>${escapeHtml(sentence)}</p>`;
     }).join("");
 
+    readingArea.scrollTop = sameView ? previousScrollTop : 0;
+    if (!sameView) {
+        clearTimeout(pendingScrollTimer);
+        pendingScrollTarget = null;
+    }
+    if ((!sameView || sentenceMoved) && displayMode !== 0) {
+        keepCurrentSentenceInView(sameView);   // glide if still on the same page
+    }
+    lastRenderKey = renderKey;
+    lastRenderSentence = currentSentenceIndex;
+    updateScrollButtons();
+
     const l1Short = (currentBook?.l1Code || "").split("-")[0].toUpperCase();
     const l2Short = (currentBook?.l2Code || "").split("-")[0].toUpperCase();
     const modeLabels = ["—", l1Short, l2Short];
@@ -841,6 +873,105 @@ function displayPage() {
     pageNumber.textContent = `${currentPage + 1} / ${pages.length}`;
 
     saveCurrentPositionSoon();
+}
+
+// ── Scrolling a page that has more text than fits ──────────────────
+// The reader never scrolls by dragging (dragging is for turning pages and
+// changing language). Instead: arrow buttons, plus automatic scrolling
+// while speech is playing.
+
+const SCROLL_EDGE_GAP = 24;   // keep text clear of the arrow buttons
+
+function scrollReadingTo(top, smooth) {
+    clearTimeout(pendingScrollTimer);
+    if (smooth) {
+        pendingScrollTarget = top;
+        pendingScrollTimer = setTimeout(function() { pendingScrollTarget = null; }, 700);
+        readingArea.scrollTo({ top: top, behavior: "smooth" });
+    } else {
+        pendingScrollTarget = null;
+        readingArea.scrollTop = top;
+    }
+}
+
+// Show an arrow only when there is hidden text in that direction.
+function updateScrollButtons() {
+    const hiddenBelow = readingArea.scrollTop + readingArea.clientHeight <
+                        readingArea.scrollHeight - 2;
+    const hiddenAbove = readingArea.scrollTop > 2;
+    scrollDownButton.hidden = !hiddenBelow;
+    scrollUpButton.hidden = !hiddenAbove;
+
+    if (pendingScrollTarget !== null &&
+        Math.abs(readingArea.scrollTop - pendingScrollTarget) < 1) {
+        pendingScrollTarget = null;   // the glide has arrived
+    }
+}
+
+readingArea.addEventListener("scroll", updateScrollButtons);
+
+function scrollReadingBy(direction) {
+    const step = Math.max(40, readingArea.clientHeight * 0.8);   // leaves a little overlap
+    const maxTop = Math.max(0, readingArea.scrollHeight - readingArea.clientHeight);
+    const current = (pendingScrollTarget !== null) ? pendingScrollTarget : readingArea.scrollTop;
+    scrollReadingTo(Math.max(0, Math.min(maxTop, current + direction * step)), true);
+}
+
+scrollDownButton.addEventListener("click", function() { scrollReadingBy(1); });
+scrollUpButton.addEventListener("click", function() { scrollReadingBy(-1); });
+
+// Scroll just enough that the current sentence is on screen. If the sentence
+// is taller than the screen, show its beginning.
+function keepCurrentSentenceInView(smooth) {
+    if (readingArea.scrollHeight <= readingArea.clientHeight + 2) return;   // everything fits
+    const paragraph = readingArea.children[currentSentenceIndex];
+    if (!paragraph) return;
+
+    const areaRect = readingArea.getBoundingClientRect();
+    const paragraphRect = paragraph.getBoundingClientRect();
+    const top = paragraphRect.top - areaRect.top + readingArea.scrollTop;
+    const bottom = top + paragraphRect.height;
+    const viewTop = readingArea.scrollTop;
+    const viewHeight = readingArea.clientHeight;
+
+    let target = viewTop;
+    if (paragraphRect.height > viewHeight - 2 * SCROLL_EDGE_GAP) {
+        target = top - SCROLL_EDGE_GAP;                          // too tall: show the start
+    } else if (top - SCROLL_EDGE_GAP < viewTop) {
+        target = top - SCROLL_EDGE_GAP;                          // sticks out above
+    } else if (bottom + SCROLL_EDGE_GAP > viewTop + viewHeight) {
+        target = bottom + SCROLL_EDGE_GAP - viewHeight;          // sticks out below
+    }
+
+    const maxTop = Math.max(0, readingArea.scrollHeight - viewHeight);
+    target = Math.max(0, Math.min(maxTop, target));
+    if (Math.abs(target - viewTop) < 1) return;
+    scrollReadingTo(target, smooth);
+}
+
+// Inside one very tall sentence: when the voice reports which word it is on,
+// scroll down in steps so the spoken part stays on screen. This only ever
+// moves downward, and only for sentences taller than most of the screen.
+function followSpokenPosition(charIndex, textLength) {
+    if (displayMode === 0 || textLength <= 0) return;
+    if (readingArea.scrollHeight <= readingArea.clientHeight + 2) return;
+    const paragraph = readingArea.children[currentSentenceIndex];
+    if (!paragraph) return;
+
+    const areaRect = readingArea.getBoundingClientRect();
+    const paragraphRect = paragraph.getBoundingClientRect();
+    const viewHeight = readingArea.clientHeight;
+    if (paragraphRect.height < viewHeight * 0.6) return;
+
+    const top = paragraphRect.top - areaRect.top + readingArea.scrollTop;
+    const fraction = Math.max(0, Math.min(1, charIndex / textLength));
+    const spokenY = top + fraction * paragraphRect.height;   // rough spot of the spoken word
+
+    const viewTop = (pendingScrollTarget !== null) ? pendingScrollTarget : readingArea.scrollTop;
+    if (spokenY <= viewTop + viewHeight * 0.65) return;       // still comfortably on screen
+
+    const maxTop = Math.max(0, readingArea.scrollHeight - viewHeight);
+    scrollReadingTo(Math.min(maxTop, spokenY - viewHeight * 0.25), true);
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1000,6 +1131,8 @@ function speakNextSentence(attempt = 0) {
     const utterance = new SpeechSynthesisUtterance(sentences[currentSentenceIndex]);
     currentUtterance = utterance;
     let started = false;
+    let wordEvents = 0;                       // how many "now on word N" reports the voice gave
+    const sentenceLength = sentences[currentSentenceIndex].length;
 
     utterance.lang = currentBook ? currentBook.l2Code : "en-GB";
 
@@ -1034,6 +1167,13 @@ function speakNextSentence(attempt = 0) {
         return true;
     }
 
+    utterance.onboundary = function(event) {
+        if (!isLive()) return;
+        if (event.name && event.name !== "word") return;
+        wordEvents++;
+        followSpokenPosition(event.charIndex || 0, sentenceLength);
+    };
+
     utterance.onstart = function() {
         if (!isLive()) return;
         started = true;
@@ -1042,7 +1182,7 @@ function speakNextSentence(attempt = 0) {
 
     utterance.onend = function() {
         if (!isLive()) return;
-        ttsLog("end");
+        ttsLog("end, word events: " + wordEvents);
         currentSentenceIndex++;
         speakNextSentence();
     };

@@ -15,7 +15,7 @@
     <meta name="apple-mobile-web-app-title" content="SwitchReader">
     <link rel="apple-touch-icon" href="apple-touch-icon.png">
 
-    <link rel="stylesheet" href="style.css?v=20">
+    <link rel="stylesheet" href="style.css?v=21">
 </head>
 <body>
 
@@ -45,6 +45,14 @@
     <symbol id="i-trash" viewBox="0 0 24 24">
       <path d="M5 7h14M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M6 7l1 12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-12"
             fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+    <symbol id="i-chevron-down" viewBox="0 0 24 24">
+      <path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+    <symbol id="i-chevron-up" viewBox="0 0 24 24">
+      <path d="M6 15l6-6 6 6" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round"/>
     </symbol>
   </defs>
 </svg>
@@ -77,6 +85,16 @@
 
     <section class="reading-area">
         <div id="reading-text"></div>
+
+        <!-- Scroll arrows: only shown when part of a page is hidden -->
+        <button type="button" class="scroll-btn scroll-up" id="scroll-up"
+                title="Scroll up" aria-label="Scroll up" hidden>
+            <svg width="22" height="22"><use href="#i-chevron-up"/></svg>
+        </button>
+        <button type="button" class="scroll-btn scroll-down" id="scroll-down"
+                title="Scroll down" aria-label="Scroll down" hidden>
+            <svg width="22" height="22"><use href="#i-chevron-down"/></svg>
+        </button>
     </section>
 
     <div class="bottom-bar">
@@ -225,7 +243,7 @@
 </section>
 
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<script src="app.js?v=20"></script>
+<script src="app.js?v=21"></script>
 
 </body>
 </html>
