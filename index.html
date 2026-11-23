@@ -15,7 +15,7 @@
     <meta name="apple-mobile-web-app-title" content="SwitchReader">
     <link rel="apple-touch-icon" href="apple-touch-icon.png">
 
-    <link rel="stylesheet" href="style.css?v=25">
+    <link rel="stylesheet" href="style.css?v=26">
 </head>
 <body>
 
@@ -71,6 +71,11 @@
             stroke-width="1.8" stroke-linecap="round"/>
       <circle cx="16" cy="7" r="2" fill="none" stroke="currentColor" stroke-width="1.8"/>
       <circle cx="8" cy="17" r="2" fill="none" stroke="currentColor" stroke-width="1.8"/>
+    </symbol>
+    <symbol id="i-more" viewBox="0 0 24 24">
+      <circle cx="12" cy="5" r="1.8" fill="currentColor"/>
+      <circle cx="12" cy="12" r="1.8" fill="currentColor"/>
+      <circle cx="12" cy="19" r="1.8" fill="currentColor"/>
     </symbol>
   </defs>
 </svg>
@@ -301,6 +306,24 @@
     </div>
 </section>
 
+<!-- ═══════════ LESSON OPTIONS (rename / delete) ═══════════ -->
+<section id="lesson-menu-panel" class="sheet" role="dialog" aria-modal="true" aria-label="Lesson options" hidden>
+    <div class="sheet-card">
+        <div class="sheet-header">
+            <h2>Lesson options</h2>
+            <button type="button" class="icon-btn" id="lesson-menu-close" title="Close" aria-label="Close">
+                <svg width="20" height="20"><use href="#i-close"/></svg>
+            </button>
+        </div>
+        <label class="sheet-field" for="lesson-name-input">Name</label>
+        <input type="text" id="lesson-name-input" maxlength="120" autocomplete="off">
+        <div class="sheet-stack">
+            <button type="button" class="sheet-button" id="lesson-name-save">Save name</button>
+            <button type="button" class="sheet-button sheet-danger" id="lesson-delete-button">Delete lesson</button>
+        </div>
+    </div>
+</section>
+
 <!-- ═══════════ LANGUAGES TO SHOW ═══════════ -->
 <section id="languages-panel" class="sheet" role="dialog" aria-modal="true" aria-label="Languages to show" hidden>
     <div class="sheet-card">
@@ -344,7 +367,7 @@
 </section>
 
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<script src="app.js?v=25"></script>
+<script src="app.js?v=26"></script>
 
 </body>
 </html>

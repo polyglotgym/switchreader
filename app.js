@@ -2,7 +2,7 @@
 //  SWITCHREADER — parallel-text lesson reader
 // ═══════════════════════════════════════════════════════════════
 
-const APP_BUILD = "2026-11-22g";   // shown at the bottom of Settings: tells you which build is running
+const APP_BUILD = "2026-11-22h";   // shown at the bottom of Settings: tells you which build is running
 
 // Some browsers have no text-to-speech at all. Remember that, and give the
 // rest of the code a harmless stand-in so the app still loads and reads.
@@ -241,6 +241,8 @@ const gotoPanel = document.getElementById("goto-panel");
 const languagesPanel = document.getElementById("languages-panel");
 const languagesList = document.getElementById("languages-list");
 const addLessonLabel = document.getElementById("add-lesson-label");
+const lessonMenuPanel = document.getElementById("lesson-menu-panel");
+const lessonNameInput = document.getElementById("lesson-name-input");
 
 const ttsButton = document.getElementById("tts-toggle");
 const ttsIcon = document.getElementById("tts-toggle-icon");
@@ -472,6 +474,7 @@ function closeAllModals() {
     importPanel.hidden = true;
     gotoPanel.hidden = true;
     languagesPanel.hidden = true;
+    lessonMenuPanel.hidden = true;
 }
 
 function toggleSettings() {
@@ -613,9 +616,9 @@ function lessonCardHtml(lesson, status, isNextUp) {
             '</span>' +
             progress +
         '</button>' +
-        '<button type="button" class="lesson-delete" data-delete="' + escapeHtml(lesson.id) + '" ' +
-            'title="Delete" aria-label="Delete lesson: ' + escapeHtml(lesson.title) + '">' +
-            '<svg width="18" height="18"><use href="#i-trash"/></svg></button>' +
+        '<button type="button" class="lesson-menu" data-menu="' + escapeHtml(lesson.id) + '" ' +
+            'title="Rename or delete" aria-label="Lesson options: ' + escapeHtml(lesson.title) + '">' +
+            '<svg width="18" height="18"><use href="#i-more"/></svg></button>' +
         '</div>';
 }
 
@@ -710,12 +713,12 @@ function renderLibrary() {
 
 // One listener for everything on the home list (cards, chips, delete buttons)
 libraryList.addEventListener("click", function(event) {
-    const target = event.target.closest("[data-open], [data-delete], [data-filter], [data-action]");
+    const target = event.target.closest("[data-open], [data-menu], [data-filter], [data-action]");
     if (!target) return;
     if (target.dataset.open) {
         openLesson(target.dataset.open);
-    } else if (target.dataset.delete) {
-        deleteLesson(target.dataset.delete);
+    } else if (target.dataset.menu) {
+        openLessonMenu(target.dataset.menu);
     } else if (target.dataset.filter) {
         homeFilter = target.dataset.filter;
         saveHomeChoices();
@@ -756,6 +759,53 @@ document.getElementById("languages-close").addEventListener("click", closeLangua
 document.getElementById("languages-done").addEventListener("click", closeLanguagesPanel);
 languagesPanel.addEventListener("click", function(event) {
     if (event.target === languagesPanel) closeLanguagesPanel();
+});
+
+// ── Rename or delete a lesson ─────────────────────────────────────
+let menuLessonId = null;
+
+function openLessonMenu(lessonId) {
+    const lesson = library.find(l => l.id === lessonId);
+    if (!lesson) return;
+    menuLessonId = lessonId;
+    lessonNameInput.value = lesson.title;
+    lessonMenuPanel.hidden = false;
+}
+
+function closeLessonMenu() {
+    lessonMenuPanel.hidden = true;
+    menuLessonId = null;
+}
+
+function saveLessonName() {
+    const lesson = library.find(l => l.id === menuLessonId);
+    const name = lessonNameInput.value.trim();
+    if (!lesson) { closeLessonMenu(); return; }
+    if (name === "") { lessonNameInput.focus(); return; }      // a lesson needs a name
+
+    const oldName = lesson.title;
+    lesson.title = name;
+    if (!saveLibrary()) {
+        lesson.title = oldName;
+        alert("The new name could not be saved because the device storage is full.");
+        return;
+    }
+    closeLessonMenu();
+    renderLibrary();
+}
+
+document.getElementById("lesson-menu-close").addEventListener("click", closeLessonMenu);
+document.getElementById("lesson-name-save").addEventListener("click", saveLessonName);
+document.getElementById("lesson-delete-button").addEventListener("click", function() {
+    const lessonId = menuLessonId;
+    closeLessonMenu();
+    if (lessonId) deleteLesson(lessonId);                       // asks "Delete ...?" first
+});
+lessonNameInput.addEventListener("keydown", function(event) {
+    if (event.key === "Enter") { event.preventDefault(); saveLessonName(); }
+});
+lessonMenuPanel.addEventListener("click", function(event) {
+    if (event.target === lessonMenuPanel) closeLessonMenu();     // tap outside the card
 });
 
 // When you press "Add lesson" the import screen starts on the right languages:
@@ -2107,6 +2157,7 @@ document.addEventListener("keydown", function(event) {
         if (!importPanel.hidden) { importPanel.hidden = true; return; }
         if (!gotoPanel.hidden) { gotoPanel.hidden = true; return; }
         if (!languagesPanel.hidden) { languagesPanel.hidden = true; return; }
+        if (!lessonMenuPanel.hidden) { closeLessonMenu(); return; }
     }
 
     if (readerScreen.hidden) return;
@@ -2114,6 +2165,7 @@ document.addEventListener("keydown", function(event) {
     if (!importPanel.hidden) return;
     if (!gotoPanel.hidden) return;
     if (!languagesPanel.hidden) return;
+    if (!lessonMenuPanel.hidden) return;
 
     if (event.target.matches("input, textarea, select") ||
         event.target.isContentEditable) return;
