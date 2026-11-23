@@ -2,7 +2,7 @@
 //  SWITCHREADER — parallel-text lesson reader
 // ═══════════════════════════════════════════════════════════════
 
-const APP_BUILD = "2026-11-23b";   // shown at the bottom of Settings: tells you which build is running
+const APP_BUILD = "2026-11-23c";   // shown at the bottom of Settings: tells you which build is running
 let offlineStatusEl = null;        // the small "Offline ready" line under it
 
 // Some browsers have no text-to-speech at all. Remember that, and give the
@@ -273,37 +273,143 @@ function relayoutSoon() {
     }, 150);
 }
 
-// Font size
-const savedFontSize = localStorage.getItem("switchreader-font-size");
-if (savedFontSize !== null) fontSizeSlider.value = savedFontSize;
+// ── Speech speed, font size and line spacing ──────────────────
+// Normally these three are the same for every language. With the switch
+// "Remember separate settings for each language" turned on, they are saved
+// under the language of the lesson that is open (its L2) instead.
 
-fontSizeSlider.addEventListener("input", function() {
-    const size = fontSizeSlider.value;
+let ttsSpeed = 1.0;
+const LANG_SETTINGS_KEY = "switchreader-lang-settings";
+const perLanguageCheckbox = document.getElementById("per-language-settings");
+const settingsLanguageNote = document.getElementById("settings-language-note");
+let perLanguageSettings = localStorage.getItem("perLanguageSettings") === "true";
+perLanguageCheckbox.checked = perLanguageSettings;
+
+function loadLanguageSettings() {
+    try { return JSON.parse(localStorage.getItem(LANG_SETTINGS_KEY) || "{}") || {}; }
+    catch (e) { return {}; }
+}
+
+function saveLanguageSettings(all) {
+    try { localStorage.setItem(LANG_SETTINGS_KEY, JSON.stringify(all)); } catch (e) {}
+}
+
+// The language these three settings currently belong to (none = the shared set)
+function editingLanguage() {
+    return perLanguageSettings && currentBook ? currentBook.l2Code : null;
+}
+
+// The shared set (also the starting point for any language you haven't changed yet)
+function sharedValues() {
+    const font = parseFloat(localStorage.getItem("switchreader-font-size"));
+    const spacing = parseFloat(localStorage.getItem("switchreader-line-spacing"));
+    const speed = parseFloat(localStorage.getItem("ttsSpeed"));
+    return {
+        fontSize: isNaN(font) ? 22 : font,
+        lineSpacing: isNaN(spacing) ? 150 : spacing,
+        speed: isNaN(speed) ? 1.0 : speed
+    };
+}
+
+// Show a value: move the slider, update its label, and apply it to the text/speech
+function showFontSize(size) {
+    fontSizeSlider.value = size;
     readingArea.style.fontSize = size + "px";
     fontSizeValue.textContent = size + "px";
-    localStorage.setItem("switchreader-font-size", size);
-    
-    if (!readerScreen.hidden) relayoutSoon();
-});
+}
 
-// Initialize the style immediately on load
-fontSizeSlider.dispatchEvent(new Event("input"));
-
-// Line spacing
-const savedLineSpacing = localStorage.getItem("switchreader-line-spacing");
-if (savedLineSpacing !== null) lineSpacingSlider.value = savedLineSpacing;
-
-lineSpacingSlider.addEventListener("input", function() {
-    const spacing = lineSpacingSlider.value / 100;
+function showLineSpacing(value) {
+    lineSpacingSlider.value = value;
+    const spacing = value / 100;
     readingArea.style.lineHeight = spacing;
     lineSpacingValue.textContent = spacing.toFixed(2);
-    localStorage.setItem("switchreader-line-spacing", lineSpacingSlider.value);
+}
 
+function showSpeed(value) {
+    ttsSpeed = value;
+    ttsSpeedSlider.value = value;
+    ttsSpeedValue.textContent = value.toFixed(1) + "×";
+}
+
+// Load the right set of values for whatever is open right now.
+function applyLanguageSettings(relayout) {
+    const values = sharedValues();
+    const lang = editingLanguage();
+    const mine = lang ? (loadLanguageSettings()[lang] || {}) : {};
+    showFontSize(mine.fontSize ?? values.fontSize);
+    showLineSpacing(mine.lineSpacing ?? values.lineSpacing);
+    showSpeed(mine.speed ?? values.speed);
+    if (relayout && !readerScreen.hidden) relayoutSoon();
+}
+
+// Save the three sliders where they belong (this language, or the shared set).
+function saveSliderValues() {
+    const values = {
+        fontSize: parseFloat(fontSizeSlider.value),
+        lineSpacing: parseFloat(lineSpacingSlider.value),
+        speed: parseFloat(ttsSpeedSlider.value)
+    };
+    const lang = editingLanguage();
+    if (lang) {
+        const all = loadLanguageSettings();
+        all[lang] = values;
+        saveLanguageSettings(all);
+    } else {
+        localStorage.setItem("switchreader-font-size", values.fontSize);
+        localStorage.setItem("switchreader-line-spacing", values.lineSpacing);
+        localStorage.setItem("ttsSpeed", values.speed);
+    }
+}
+
+// With the switch on, the sliders belong to a language, so they are locked
+// on the home screen where no language is open. The voice is always tied
+// to a language, so it is locked there either way.
+function updateSettingsAvailability() {
+    const lessonOpen = !!currentBook;
+    const slidersLocked = perLanguageSettings && !lessonOpen;
+    [fontSizeSlider, lineSpacingSlider, ttsSpeedSlider].forEach(function(slider) {
+        slider.disabled = slidersLocked;
+    });
+    ttsVoiceSelect.disabled = !lessonOpen;
+
+    let note = "";
+    if (perLanguageSettings && lessonOpen) {
+        note = "Settings for: " + currentBook.l2Name;
+    } else if (slidersLocked) {
+        note = "Open a lesson to change speech speed, font size, line spacing and voice. " +
+               "They are saved separately for each language.";
+    } else if (!lessonOpen) {
+        note = "Open a lesson to choose a reading voice.";
+    }
+    settingsLanguageNote.textContent = note;
+}
+
+fontSizeSlider.addEventListener("input", function() {
+    showFontSize(fontSizeSlider.value);
+    saveSliderValues();
     if (!readerScreen.hidden) relayoutSoon();
 });
 
-// Initialize the style immediately on load
-lineSpacingSlider.dispatchEvent(new Event("input"));
+lineSpacingSlider.addEventListener("input", function() {
+    showLineSpacing(parseFloat(lineSpacingSlider.value));
+    saveSliderValues();
+    if (!readerScreen.hidden) relayoutSoon();
+});
+
+ttsSpeedSlider.addEventListener("input", function() {
+    showSpeed(parseFloat(ttsSpeedSlider.value));
+    saveSliderValues();
+});
+
+perLanguageCheckbox.addEventListener("change", function() {
+    perLanguageSettings = perLanguageCheckbox.checked;
+    localStorage.setItem("perLanguageSettings", perLanguageSettings);
+    applyLanguageSettings(true);
+    updateSettingsAvailability();
+});
+
+// Initialise the style immediately on load
+applyLanguageSettings(false);
 
 // Highlight
 let ttsHighlightEnabled = localStorage.getItem("ttsHighlightEnabled") !== "false";
@@ -374,19 +480,6 @@ followTogetherCheckbox.addEventListener("change", function() {
     localStorage.setItem("followTogether", followTogether);
 });
 
-// Speech speed
-let ttsSpeed = 1.0;
-const savedTtsSpeed = localStorage.getItem("ttsSpeed");
-if (savedTtsSpeed !== null) {
-    ttsSpeed = parseFloat(savedTtsSpeed);
-    ttsSpeedSlider.value = ttsSpeed;
-    ttsSpeedValue.textContent = ttsSpeed.toFixed(1) + "×";
-}
-ttsSpeedSlider.addEventListener("input", function() {
-    ttsSpeed = parseFloat(ttsSpeedSlider.value);
-    ttsSpeedValue.textContent = ttsSpeed.toFixed(1) + "×";
-    localStorage.setItem("ttsSpeed", ttsSpeed);
-});
 
 // ═══════════════════════════════════════════════════════════════
 //  TTS VOICES
@@ -468,6 +561,7 @@ document.getElementById("reset-settings-button").addEventListener("click", funct
         box.dispatchEvent(new Event("change"));
     };
 
+    setSwitch(perLanguageCheckbox, false);   // first, so the sliders below reset the shared set
     setSlider(ttsSpeedSlider, "1.0");
     setSlider(fontSizeSlider, "22");
     setSlider(lineSpacingSlider, "150");
@@ -490,7 +584,8 @@ document.getElementById("reset-settings-button").addEventListener("click", funct
         "switchreader-font-size", "switchreader-line-spacing", "ttsSpeed",
         "ttsHighlightEnabled", "tapStartsTts", "continueTtsOnPageTurn",
         "autoNextLesson", "nextSameLanguage", "thirdModeEnabled",
-        "blankModeEnabled", "followTogether", "showDebugLog"
+        "blankModeEnabled", "followTogether", "showDebugLog",
+        "perLanguageSettings", LANG_SETTINGS_KEY
     ].forEach(function(key) { localStorage.removeItem(key); });
     Object.keys(localStorage)
         .filter(function(key) { return key.startsWith("ttsVoiceURI_"); })
@@ -505,6 +600,8 @@ function showHomeScreen() {
     readerScreen.hidden = true;
     homeScreen.hidden = false;
     document.body.classList.add("on-home");
+    applyLanguageSettings(false);
+    updateSettingsAvailability();
     renderLibrary();
 }
 
@@ -933,6 +1030,8 @@ function openLesson(lessonId, options = {}) {
         l1Code: lesson.l1Code,
         l1Name: lesson.l1Name
     };
+    applyLanguageSettings(false);        // this language's speed / font / spacing (pagination follows below)
+    updateSettingsAvailability();
 
     readingUnits = lesson.units.map(u => {
         const l2 = Array.isArray(u.l2) ? u.l2 : [u.l2 || ""];

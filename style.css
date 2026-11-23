@@ -429,6 +429,21 @@ body {
     border-bottom: 1px solid #1f1f1f;
 }
 
+/* Note at the top of "Text and voice", and locked controls */
+
+.language-note {
+    color: #aaa;
+    font-size: 12px;
+    line-height: 1.4;
+    padding: 4px 0 8px;
+}
+
+.language-note:empty { display: none; }
+
+.slider-row input[type="range"]:disabled { opacity: 0.35; }
+
+.select-row select:disabled { opacity: 0.5; }
+
 /* Reset button, and the collapsible Advanced section */
 
 .reset-section {
