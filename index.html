@@ -15,7 +15,7 @@
     <meta name="apple-mobile-web-app-title" content="SwitchReader">
     <link rel="apple-touch-icon" href="apple-touch-icon.png">
 
-    <link rel="stylesheet" href="style.css?v=28">
+    <link rel="stylesheet" href="style.css?v=29">
 </head>
 <body>
 
@@ -134,114 +134,115 @@
     <div class="modal-body">
 
         <div class="card-section">
+            <h3 class="section-header">Text and voice</h3>
+
+            <div class="slider-row">
+                <div class="slider-header">
+                    <label for="tts-speed" class="slider-label">Speech speed</label>
+                    <span class="slider-value" id="tts-speed-value">1.0×</span>
+                </div>
+                <input type="range" id="tts-speed" min="0.5" max="1.5" step="0.1" value="1.0">
+            </div>
+
+            <div class="slider-row">
+                <div class="slider-header">
+                    <label for="font-size" class="slider-label">Font size</label>
+                    <span class="slider-value" id="font-size-value">22px</span>
+                </div>
+                <input type="range" id="font-size" min="12" max="32" value="22">
+            </div>
+
+            <div class="slider-row">
+                <div class="slider-header">
+                    <label for="line-spacing" class="slider-label">Line spacing</label>
+                    <span class="slider-value" id="line-spacing-value">1.50</span>
+                </div>
+                <input type="range" id="line-spacing" min="90" max="200" value="150" step="5">
+            </div>
+
+            <div class="select-row">
+                <label for="tts-voice" class="toggle-title">Reading voice</label>
+                <select id="tts-voice">
+                    <option value="">Automatic (default voice)</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="card-section">
             <h3 class="section-header">Reading</h3>
 
-            <label class="toggle-row">
-                <div class="toggle-label">
-                    <div class="toggle-title">Enable third mode</div>
-                    <div class="toggle-hint">Shows the third spreadsheet column (romanised text, notes). Blank where that column is empty.</div>
-                </div>
-                <input type="checkbox" id="third-mode-enabled" class="switch" checked>
+            <label class="toggle-row">
+                <div class="toggle-label">
+                    <div class="toggle-title">Highlight current sentence</div>
+                </div>
+                <input type="checkbox" id="tts-highlight" class="switch" checked>
             </label>
 
-            <label class="toggle-row">
-                <div class="toggle-label">
-                    <div class="toggle-title">Tapping a sentence starts speech</div>
-                    <div class="toggle-hint">Off: taps move the highlight but don't start playback.</div>
-                </div>
-                <input type="checkbox" id="tap-starts-tts" class="switch">
+            <label class="toggle-row">
+                <div class="toggle-label">
+                    <div class="toggle-title">Tapping a sentence starts speech</div>
+                    <div class="toggle-hint">Off: taps move the highlight but don't start playback.</div>
+                </div>
+                <input type="checkbox" id="tap-starts-tts" class="switch">
             </label>
 
-            <label class="toggle-row">
-                <div class="toggle-label">
-                    <div class="toggle-title">Continue speech on page turn</div>
-                    <div class="toggle-hint">Only applies when TTS is playing.</div>
-                </div>
-                <input type="checkbox" id="continue-tts-on-page-turn" class="switch">
+            <label class="toggle-row">
+                <div class="toggle-label">
+                    <div class="toggle-title">Continue speech on page turn</div>
+                    <div class="toggle-hint">Only applies when TTS is playing.</div>
+                </div>
+                <input type="checkbox" id="continue-tts-on-page-turn" class="switch">
             </label>
 
-            <label class="toggle-row">
-                <div class="toggle-label">
-                    <div class="toggle-title">Speech continues into the next lesson</div>
-                    <div class="toggle-hint">Off: when speech reaches the end of a lesson, you see the end card instead.</div>
-                </div>
-                <input type="checkbox" id="auto-next-lesson" class="switch">
+            <label class="toggle-row">
+                <div class="toggle-label">
+                    <div class="toggle-title">Speech continues into the next lesson</div>
+                    <div class="toggle-hint">Off: when speech reaches the end of a lesson, you see the end card instead.</div>
+                </div>
+                <input type="checkbox" id="auto-next-lesson" class="switch">
             </label>
 
-            <label class="toggle-row">
-                <div class="toggle-label">
-                    <div class="toggle-title">Next lesson stays in the same language</div>
-                    <div class="toggle-hint">Off: the next lesson can be in any language.</div>
-                </div>
-                <input type="checkbox" id="next-same-language" class="switch" checked>
-            </label>
-        </div>
-
-        <div class="card-section">
-            <h3 class="section-header">Appearance</h3>
-
-            <div class="slider-row">
-                <div class="slider-header">
-                    <label for="font-size" class="slider-label">Font size</label>
-                    <span class="slider-value" id="font-size-value">22px</span>
-                </div>
-                <input type="range" id="font-size" min="12" max="32" value="22">
-            </div>
-
-            <div class="slider-row">
-                <div class="slider-header">
-                    <label for="line-spacing" class="slider-label">Line spacing</label>
-                    <span class="slider-value" id="line-spacing-value">1.50</span>
-                </div>
-                <input type="range" id="line-spacing" min="90" max="200" value="150" step="5">
-            </div>
-        </div>
-
-        <div class="card-section">
-            <h3 class="section-header">Audio</h3>
-
-            <label class="toggle-row">
-                <div class="toggle-label">
-                    <div class="toggle-title">Highlight current sentence</div>
-                </div>
-                <input type="checkbox" id="tts-highlight" class="switch" checked>
+            <label class="toggle-row">
+                <div class="toggle-label">
+                    <div class="toggle-title">Next lesson stays in the same language</div>
+                    <div class="toggle-hint">Off: the next lesson can be in any language.</div>
+                </div>
+                <input type="checkbox" id="next-same-language" class="switch" checked>
             </label>
 
-            <div class="slider-row">
-                <div class="slider-header">
-                    <label for="tts-speed" class="slider-label">Speech speed</label>
-                    <span class="slider-value" id="tts-speed-value">1.0×</span>
-                </div>
-                <input type="range" id="tts-speed" min="0.5" max="1.5" step="0.1" value="1.0">
-            </div>
-
-            <div class="select-row">
-                <label for="tts-voice" class="toggle-title">Reading voice</label>
-                <select id="tts-voice">
-                    <option value="">Automatic (default voice)</option>
-                </select>
-            </div>
-        </div>
-
-        <div class="card-section">
-            <h3 class="section-header">Advanced</h3>
-
-            <label class="toggle-row">
-                <div class="toggle-label">
-                    <div class="toggle-title">Follow my place when switching language</div>
-                    <div class="toggle-hint">On a long page, switching language lands on the matching part of the text. Off: each language remembers its own place.</div>
-                </div>
-                <input type="checkbox" id="follow-together" class="switch" checked>
-            </label>
-
-            <label class="toggle-row">
-                <div class="toggle-label">
-                    <div class="toggle-title">Show debug log</div>
-                    <div class="toggle-hint">Shows a small log of recent events at the bottom of the screen. For troubleshooting.</div>
-                </div>
-                <input type="checkbox" id="show-debug-log" class="switch">
+            <label class="toggle-row">
+                <div class="toggle-label">
+                    <div class="toggle-title">Enable third mode</div>
+                    <div class="toggle-hint">Shows the third spreadsheet column (romanised text, notes). Blank where that column is empty.</div>
+                </div>
+                <input type="checkbox" id="third-mode-enabled" class="switch" checked>
             </label>
         </div>
+
+        <div class="reset-section">
+            <button type="button" id="reset-settings-button" class="reset-button">Reset to defaults</button>
+            <div class="toggle-hint">Puts every setting back to how it was when you first installed the app. Your lessons and reading positions are not affected.</div>
+        </div>
+
+        <details class="card-section" id="advanced-section">
+            <summary class="section-header">Advanced</summary>
+
+            <label class="toggle-row">
+                <div class="toggle-label">
+                    <div class="toggle-title">Follow my place when switching language</div>
+                    <div class="toggle-hint">On a long page, switching language lands on the matching part of the text. Off: each language remembers its own place.</div>
+                </div>
+                <input type="checkbox" id="follow-together" class="switch" checked>
+            </label>
+
+            <label class="toggle-row">
+                <div class="toggle-label">
+                    <div class="toggle-title">Show debug log</div>
+                    <div class="toggle-hint">Shows a small log of recent events at the bottom of the screen. For troubleshooting.</div>
+                </div>
+                <input type="checkbox" id="show-debug-log" class="switch">
+            </label>
+        </details>
 
     </div>
 </section>
@@ -376,7 +377,7 @@
         document.head.appendChild(xlsxFallback);
     }
 </script>
-<script src="app.js?v=28"></script>
+<script src="app.js?v=29"></script>
 
 </body>
 </html>

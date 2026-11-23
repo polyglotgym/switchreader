@@ -429,6 +429,54 @@ body {
     border-bottom: 1px solid #1f1f1f;
 }
 
+/* Reset button, and the collapsible Advanced section */
+
+.reset-section {
+    margin: 0 0 14px;
+    padding: 0 4px;
+}
+
+.reset-button {
+    display: block;
+    width: 100%;
+    padding: 12px;
+    font-size: 14px;
+    background: #1c1212;
+    color: #f87171;
+    border: 1px solid #7f1d1d;
+    border-radius: 8px;
+    cursor: pointer;
+    font-family: Arial, sans-serif;
+}
+
+.reset-button:hover { background: #2a1515; }
+
+.reset-section .toggle-hint { text-align: center; margin-top: 8px; }
+
+details.card-section > summary.section-header {
+    cursor: pointer;
+    list-style: none;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+details.card-section > summary.section-header::-webkit-details-marker { display: none; }
+
+details.card-section > summary.section-header::after {
+    content: "\25B8";            /* small arrow pointing right: closed */
+    font-size: 14px;
+}
+
+details.card-section[open] > summary.section-header::after {
+    content: "\25BE";            /* small arrow pointing down: open */
+}
+
+details.card-section:not([open]) > summary.section-header {
+    border-bottom: none;
+    padding-bottom: 12px;
+}
+
 /* Toggle rows (contain a switch) */
 
 .toggle-row {

@@ -2,7 +2,7 @@
 //  SWITCHREADER — parallel-text lesson reader
 // ═══════════════════════════════════════════════════════════════
 
-const APP_BUILD = "2026-11-23a";   // shown at the bottom of Settings: tells you which build is running
+const APP_BUILD = "2026-11-23b";   // shown at the bottom of Settings: tells you which build is running
 let offlineStatusEl = null;        // the small "Offline ready" line under it
 
 // Some browsers have no text-to-speech at all. Remember that, and give the
@@ -447,6 +447,54 @@ ttsVoiceSelect.addEventListener("change", function() {
     if (currentBook) {
         localStorage.setItem("ttsVoiceURI_" + currentBook.l2Code, selectedTtsVoiceURI);
     }
+});
+
+// ═══════════════════════════════════════════════════════════════
+//  RESET TO DEFAULTS
+// ═══════════════════════════════════════════════════════════════
+// Puts every setting back to how it was on first install. It never touches
+// lessons, reading positions or the home-screen language filter.
+
+document.getElementById("reset-settings-button").addEventListener("click", function() {
+    if (!confirm("Put all settings back to their defaults?\n\n" +
+                 "Your lessons and reading positions are not affected.")) return;
+
+    const setSlider = function(slider, value) {
+        slider.value = value;
+        slider.dispatchEvent(new Event("input"));
+    };
+    const setSwitch = function(box, on) {
+        box.checked = on;
+        box.dispatchEvent(new Event("change"));
+    };
+
+    setSlider(ttsSpeedSlider, "1.0");
+    setSlider(fontSizeSlider, "22");
+    setSlider(lineSpacingSlider, "150");
+    setSwitch(ttsHighlightCheckbox, true);
+    setSwitch(tapStartsTtsCheckbox, false);
+    setSwitch(continueTtsOnPageTurnCheckbox, false);
+    setSwitch(autoNextLessonCheckbox, false);
+    setSwitch(nextSameLanguageCheckbox, true);
+    setSwitch(thirdModeCheckbox, true);
+    setSwitch(followTogetherCheckbox, true);
+    setSwitch(document.getElementById("show-debug-log"), false);
+
+    // Voices: back to Automatic for every language
+    selectedTtsVoiceURI = "";
+    ttsVoiceSelect.value = "";
+
+    // The controls above saved their default values as they changed.
+    // Forget those saved copies so the app starts from its built-in defaults.
+    [
+        "switchreader-font-size", "switchreader-line-spacing", "ttsSpeed",
+        "ttsHighlightEnabled", "tapStartsTts", "continueTtsOnPageTurn",
+        "autoNextLesson", "nextSameLanguage", "thirdModeEnabled",
+        "blankModeEnabled", "followTogether", "showDebugLog"
+    ].forEach(function(key) { localStorage.removeItem(key); });
+    Object.keys(localStorage)
+        .filter(function(key) { return key.startsWith("ttsVoiceURI_"); })
+        .forEach(function(key) { localStorage.removeItem(key); });
 });
 
 // ═══════════════════════════════════════════════════════════════
