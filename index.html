@@ -15,7 +15,7 @@
     <meta name="apple-mobile-web-app-title" content="SwitchReader">
     <link rel="apple-touch-icon" href="apple-touch-icon.png">
 
-    <link rel="stylesheet" href="style.css?v=27">
+    <link rel="stylesheet" href="style.css?v=28">
 </head>
 <body>
 
@@ -366,8 +366,17 @@
     </div>
 </section>
 
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<script src="app.js?v=27"></script>
+<!-- Spreadsheet reader: kept as a file in the app folder so it works offline. -->
+<script src="xlsx.full.min.js"></script>
+<script>
+    // If that file is missing, fall back to the internet copy so importing still works online.
+    if (typeof XLSX === "undefined") {
+        var xlsxFallback = document.createElement("script");
+        xlsxFallback.src = "https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js";
+        document.head.appendChild(xlsxFallback);
+    }
+</script>
+<script src="app.js?v=28"></script>
 
 </body>
 </html>

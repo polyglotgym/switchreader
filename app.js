@@ -2,7 +2,8 @@
 //  SWITCHREADER — parallel-text lesson reader
 // ═══════════════════════════════════════════════════════════════
 
-const APP_BUILD = "2026-11-22i";   // shown at the bottom of Settings: tells you which build is running
+const APP_BUILD = "2026-11-23a";   // shown at the bottom of Settings: tells you which build is running
+let offlineStatusEl = null;        // the small "Offline ready" line under it
 
 // Some browsers have no text-to-speech at all. Remember that, and give the
 // rest of the code a harmless stand-in so the app still loads and reads.
@@ -484,6 +485,7 @@ function toggleSettings() {
     } else {
         settingsPanel.hidden = false;
         importPanel.hidden = true;
+        refreshOfflineStatus();
     }
 }
 
@@ -976,9 +978,10 @@ importConfirmButton.addEventListener("click", async function() {
     if (!pendingImportFile) return;
 
     if (typeof XLSX === "undefined") {
-        alert("The spreadsheet reader could not be loaded. It needs an " +
-              "internet connection. Please connect and reload the app, " +
-              "then try again.");
+        alert("The spreadsheet reader could not be loaded. Its file " +
+              "(xlsx.full.min.js) is missing from the app, and there is no " +
+              "internet connection to fetch a copy. Please connect and " +
+              "reload the app, then try again.");
         return;
     }
 
@@ -2232,7 +2235,62 @@ seedLibraryIfEmpty();
     stamp.textContent = "Build " + APP_BUILD;
     stamp.style.cssText = "text-align:center;color:#555;font-size:11px;padding:8px 0 24px;";
     body.appendChild(stamp);
+
+    // A second small line under the build number: is offline mode working?
+    offlineStatusEl = document.createElement("div");
+    offlineStatusEl.style.cssText = "text-align:center;color:#555;font-size:11px;padding:0 0 24px;margin-top:-16px;";
+    body.appendChild(offlineStatusEl);
 })();
+
+// ═══════════════════════════════════════════════════════════════
+//  OFFLINE MODE (service worker)
+// ═══════════════════════════════════════════════════════════════
+// sw.js keeps a copy of the app on the phone. New versions are downloaded
+// quietly in the background and only take over once the app has been fully
+// closed and reopened, so nothing changes while you are in the middle of a lesson.
+
+async function offlineStatusText() {
+    if (!("serviceWorker" in navigator) || !window.caches) {
+        return "Offline mode is not available in this browser";
+    }
+    const reg = await navigator.serviceWorker.getRegistration();
+    if (!reg) return "Offline: setting up\u2026";
+    if (reg.waiting && navigator.serviceWorker.controller) {
+        return "Update downloaded \u2014 it starts next time you close and reopen the app";
+    }
+    if (reg.installing) return "Offline: saving the app\u2026";
+    if (!navigator.serviceWorker.controller) return "Offline: almost ready \u2014 reopen the app once";
+    const appCopy = await caches.match("app.js", { ignoreSearch: true });
+    if (!appCopy) return "Offline: not saved yet";
+    const readerCopy = await caches.match("xlsx.full.min.js", { ignoreSearch: true });
+    return readerCopy
+        ? "Offline ready"
+        : "Offline ready, but importing lessons needs internet (spreadsheet reader file not found)";
+}
+
+function refreshOfflineStatus() {
+    if (!offlineStatusEl) return;
+    offlineStatusText()
+        .then(function(text) { offlineStatusEl.textContent = text; })
+        .catch(function() { offlineStatusEl.textContent = "Offline: status unknown"; });
+}
+
+if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.addEventListener("controllerchange", refreshOfflineStatus);
+    navigator.serviceWorker.register("sw.js", { updateViaCache: "none" })
+        .then(function(reg) {
+            reg.update().catch(function() {});   // look for a newer version now
+            reg.addEventListener("updatefound", function() {
+                const worker = reg.installing;
+                if (!worker) return;
+                worker.addEventListener("statechange", refreshOfflineStatus);
+            });
+            refreshOfflineStatus();
+        })
+        .catch(function(err) {
+            if (typeof ttsLog === "function") ttsLog("service worker: " + err);
+        });
+}
 
 // Set the initial history state
 history.replaceState({ view: 'home' }, '', '#home');
