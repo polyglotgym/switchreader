@@ -2,7 +2,7 @@
 //  SWITCHREADER — parallel-text lesson reader
 // ═══════════════════════════════════════════════════════════════
 
-const APP_BUILD = "2026-11-22f";   // shown at the bottom of Settings: tells you which build is running
+const APP_BUILD = "2026-11-22g";   // shown at the bottom of Settings: tells you which build is running
 
 // Some browsers have no text-to-speech at all. Remember that, and give the
 // rest of the code a harmless stand-in so the app still loads and reads.
@@ -182,10 +182,13 @@ function loadSavedPosition(lesson) {
 function saveCurrentPosition() {
     if (!currentLessonId || pages.length === 0) return;
     try {
+        const existing = readLessonPosition(currentLessonId);
         localStorage.setItem(positionKey(currentLessonId), JSON.stringify({
             v: 2,
             sentence: currentGlobalSentence(),
-            mode: displayMode
+            mode: displayMode,
+            at: Date.now(),                                    // when you last read it
+            finished: !!(existing && existing.finished) || !!pages[currentPage]?.isEnd
         }));
     } catch (e) {
         console.error("Could not save position:", e);
@@ -235,6 +238,9 @@ const pageNumber = document.getElementById("page-number");
 const scrollUpButton = document.getElementById("scroll-up");
 const scrollDownButton = document.getElementById("scroll-down");
 const gotoPanel = document.getElementById("goto-panel");
+const languagesPanel = document.getElementById("languages-panel");
+const languagesList = document.getElementById("languages-list");
+const addLessonLabel = document.getElementById("add-lesson-label");
 
 const ttsButton = document.getElementById("tts-toggle");
 const ttsIcon = document.getElementById("tts-toggle-icon");
@@ -447,12 +453,14 @@ ttsVoiceSelect.addEventListener("change", function() {
 function showHomeScreen() {
     readerScreen.hidden = true;
     homeScreen.hidden = false;
+    document.body.classList.add("on-home");
     renderLibrary();
 }
 
 function showReaderScreen() {
     homeScreen.hidden = true;
     readerScreen.hidden = false;
+    document.body.classList.remove("on-home");
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -463,6 +471,7 @@ function closeAllModals() {
     settingsPanel.hidden = true;
     importPanel.hidden = true;
     gotoPanel.hidden = true;
+    languagesPanel.hidden = true;
 }
 
 function toggleSettings() {
@@ -488,56 +497,292 @@ function escapeHtml(s) {
     }[c]));
 }
 
+// ── Languages: colours, flags and names ───────────────────────────
+// Colours follow The Polyglot Gym hub. They are used on the home screen only
+// (sections, cards, progress bars) and never on the reading text.
+const LANGUAGE_INFO = {
+    ru: { name: "Russian",    color: "#ff4757", soft: "rgba(255, 71, 87, 0.16)" },
+    es: { name: "Spanish",    color: "#f59e0b", soft: "rgba(245, 158, 11, 0.16)" },
+    ja: { name: "Japanese",   color: "#06b6d4", soft: "rgba(6, 182, 212, 0.16)" },
+    it: { name: "Italian",    color: "#22c55e", soft: "rgba(34, 197, 94, 0.16)" },
+    pt: { name: "Portuguese", color: "#eab308", soft: "rgba(234, 179, 8, 0.16)" },
+    fr: { name: "French",     color: "#3b82f6", soft: "rgba(59, 130, 246, 0.16)" },
+    en: { name: "English",    color: "#a855f7", soft: "rgba(168, 85, 247, 0.16)" }
+};
+const LANGUAGE_ORDER = ["ru", "es", "ja", "it", "pt", "fr", "en"];
+const FLAG_CLASS = {
+    "ru-RU": "flag-ru", "es-ES": "flag-es", "ja-JP": "flag-ja", "it-IT": "flag-it",
+    "fr-FR": "flag-fr", "pt-PT": "flag-pt", "pt-BR": "flag-br",
+    "en-GB": "flag-gb", "en-US": "flag-us"
+};
+
+function languagePrefix(code) {
+    return (code || "").split("-")[0].toLowerCase();
+}
+
+function languageInfo(prefix) {
+    return LANGUAGE_INFO[prefix] ||
+        { name: prefix.toUpperCase(), color: "#94a3b8", soft: "rgba(148, 163, 184, 0.16)" };
+}
+
+// Which language chip is selected, and which languages you have hidden.
+let homeFilter = "all";
+let hiddenLanguages = new Set();
+try {
+    homeFilter = localStorage.getItem("homeLanguageFilter") || "all";
+    const savedHidden = JSON.parse(localStorage.getItem("hiddenLanguages") || "[]");
+    if (Array.isArray(savedHidden)) hiddenLanguages = new Set(savedHidden);
+} catch (e) {}
+
+function saveHomeChoices() {
+    try {
+        localStorage.setItem("homeLanguageFilter", homeFilter);
+        localStorage.setItem("hiddenLanguages", JSON.stringify([...hiddenLanguages]));
+    } catch (e) {}
+}
+
+// ── Progress ──────────────────────────────────────────────────────
+function totalSentences(lesson) {
+    return (lesson.units || []).reduce(
+        (sum, u) => sum + (Array.isArray(u.l2) ? u.l2.length : 1), 0);
+}
+
+function readLessonPosition(lessonId) {
+    try {
+        const raw = localStorage.getItem(positionKey(lessonId));
+        return raw ? JSON.parse(raw) : null;
+    } catch (e) {
+        return null;
+    }
+}
+
+// { state: "new" | "reading" | "done", current, total, percent, at }
+function lessonStatus(lesson) {
+    const total = Math.max(1, totalSentences(lesson));
+    const position = readLessonPosition(lesson.id);
+    if (!position || typeof position.sentence !== "number") {
+        return { state: "new", current: 0, total: total, percent: 0, at: 0 };
+    }
+    const done = position.finished === true;
+    const current = done ? total : Math.min(total, Math.floor(position.sentence) + 1);
+    return {
+        state: done ? "done" : "reading",
+        current: current,
+        total: total,
+        percent: Math.round(current * 100 / total),
+        at: position.at || 0
+    };
+}
+
+// Languages that have at least one lesson, in a steady order.
+function presentLanguages() {
+    const found = new Set(library.map(l => languagePrefix(l.l2Code)));
+    const known = LANGUAGE_ORDER.filter(p => found.has(p));
+    const others = [...found].filter(p => !LANGUAGE_ORDER.includes(p)).sort();
+    return known.concat(others);
+}
+
+function lessonCardHtml(lesson, status, isNextUp) {
+    const flag = FLAG_CLASS[lesson.l2Code] || "";
+    const l2Name = languageNames[lesson.l2Code] || languagePrefix(lesson.l2Code).toUpperCase();
+    const l1Name = languageNames[lesson.l1Code] || languagePrefix(lesson.l1Code).toUpperCase();
+
+    let progress;
+    if (status.state === "done") {
+        progress = '<span class="progress-track"><span class="progress-fill" style="width:100%"></span></span>' +
+            '<span class="progress-text"><span class="done-tag"><svg width="14" height="14"><use href="#i-check"/></svg>Done</span>' +
+            '<span>· ' + status.total + ' / ' + status.total + '</span></span>';
+    } else if (status.state === "reading") {
+        progress = '<span class="progress-track"><span class="progress-fill" style="width:' + status.percent + '%"></span></span>' +
+            '<span class="progress-text"><span><b>' + status.current + '</b> / ' + status.total +
+            ' · ' + status.percent + '%</span></span>';
+    } else {
+        progress = '<span class="progress-text"><span>Not started</span></span>';
+    }
+
+    return '<div class="lesson-card">' +
+        '<button type="button" class="lesson-open" data-open="' + escapeHtml(lesson.id) + '">' +
+            '<span class="lesson-head">' +
+                '<span class="flag ' + flag + '" aria-hidden="true"></span>' +
+                '<span class="lesson-text">' +
+                    '<span class="lesson-title" style="display:block">' + escapeHtml(lesson.title) + '</span>' +
+                    '<span class="lesson-meta" style="display:block">' + escapeHtml(l2Name) + ' → ' + escapeHtml(l1Name) +
+                        (isNextUp ? ' · <span class="next-up">Next up</span>' : '') + '</span>' +
+                '</span>' +
+                '<span class="lang-badge">' + escapeHtml(languagePrefix(lesson.l2Code).toUpperCase()) + '</span>' +
+            '</span>' +
+            progress +
+        '</button>' +
+        '<button type="button" class="lesson-delete" data-delete="' + escapeHtml(lesson.id) + '" ' +
+            'title="Delete" aria-label="Delete lesson: ' + escapeHtml(lesson.title) + '">' +
+            '<svg width="18" height="18"><use href="#i-trash"/></svg></button>' +
+        '</div>';
+}
+
 function renderLibrary() {
-    libraryList.innerHTML = "";
+    const scrollTop = libraryList.scrollTop;
 
     if (library.length === 0) {
+        addLessonLabel.textContent = "Add lesson";
         libraryList.innerHTML =
             '<p class="empty-state">No lessons yet.<br>Tap "Add lesson" to import one.</p>';
         return;
     }
 
-    const sorted = library.slice().sort((a, b) =>
-        (b.createdAt || 0) - (a.createdAt || 0)
-    );
+    const present = presentLanguages();
+    const visible = present.filter(p => !hiddenLanguages.has(p));
+    if (homeFilter !== "all" && !visible.includes(homeFilter)) homeFilter = "all";
 
-    sorted.forEach(lesson => {
-        const row = document.createElement("div");
-        row.className = "lesson-row";
-
-        const openBtn = document.createElement("button");
-        openBtn.type = "button";
-        openBtn.className = "lesson-open";
-
-        const l2Short = (lesson.l2Code || "").split("-")[0].toUpperCase();
-        const l1Short = (lesson.l1Code || "").split("-")[0].toUpperCase();
-        const count = lesson.units.reduce(
-            (sum, u) => sum + (Array.isArray(u.l2) ? u.l2.length : 1), 0
-        );
-
-        openBtn.innerHTML =
-            '<div class="lesson-title">' + escapeHtml(lesson.title) + '</div>' +
-            '<div class="lesson-meta">' + l2Short + ' → ' + l1Short +
-            ' · ' + count + ' sentence' + (count === 1 ? "" : "s") + '</div>';
-
-        openBtn.addEventListener("click", () => openLesson(lesson.id));
-
-        const deleteBtn = document.createElement("button");
-        deleteBtn.type = "button";
-        deleteBtn.className = "lesson-delete";
-        deleteBtn.title = "Delete";
-        deleteBtn.setAttribute("aria-label", "Delete lesson: " + lesson.title);
-        deleteBtn.innerHTML =
-            '<svg width="18" height="18"><use href="#i-trash"/></svg>';
-        deleteBtn.addEventListener("click", (e) => {
-            e.stopPropagation();
-            deleteLesson(lesson.id);
-        });
-
-        row.appendChild(openBtn);
-        row.appendChild(deleteBtn);
-        libraryList.appendChild(row);
+    // Lessons in each visible language, in the order they were imported
+    // (so chapters read in sequence), with their progress.
+    const byLanguage = {};
+    visible.forEach(prefix => {
+        byLanguage[prefix] = library
+            .map((lesson, index) => ({ lesson: lesson, index: index }))
+            .filter(entry => languagePrefix(entry.lesson.l2Code) === prefix)
+            .sort((a, b) => ((a.lesson.createdAt || 0) - (b.lesson.createdAt || 0)) || (a.index - b.index))
+            .map(entry => ({ lesson: entry.lesson, status: lessonStatus(entry.lesson) }));
     });
+
+    // "Next up": the first lesson not yet started, once you have started or finished another in that language
+    const nextUpId = {};
+    visible.forEach(prefix => {
+        const entries = byLanguage[prefix];
+        if (entries.some(e => e.status.state !== "new")) {
+            const firstNew = entries.find(e => e.status.state === "new");
+            if (firstNew) nextUpId[prefix] = firstNew.lesson.id;
+        }
+    });
+
+    // Continue card: the unfinished lesson you read most recently
+    let latest = null;
+    visible.forEach(prefix => byLanguage[prefix].forEach(entry => {
+        if (entry.status.state === "reading" && entry.status.at > 0 &&
+            (!latest || entry.status.at > latest.status.at)) latest = entry;
+    }));
+
+    let html = "";
+    if (latest) {
+        const info = languageInfo(languagePrefix(latest.lesson.l2Code));
+        html += '<button type="button" class="continue-card" data-open="' + escapeHtml(latest.lesson.id) +
+            '" style="--c:' + info.color + '">' +
+            '<span class="continue-text"><span class="continue-label">Continue reading</span>' +
+            '<span class="continue-title">' + escapeHtml(latest.lesson.title) + '</span></span>' +
+            '<span class="continue-go">' + latest.status.current + ' / ' + latest.status.total + ' →</span></button>';
+    }
+
+    // Language chips (All, one per visible language) and the "choose languages" button
+    html += '<div class="chips" role="group" aria-label="Filter by language">' +
+        '<button type="button" class="chip' + (homeFilter === "all" ? ' on' : '') + '" data-filter="all" ' +
+        'aria-pressed="' + (homeFilter === "all") + '">All</button>';
+    visible.forEach(prefix => {
+        const info = languageInfo(prefix);
+        const on = homeFilter === prefix;
+        html += '<button type="button" class="chip lang' + (on ? ' on' : '') + '" data-filter="' + prefix +
+            '" aria-pressed="' + on + '" style="--c:' + info.color + ';--soft:' + info.soft + '">' +
+            escapeHtml(info.name) + '</button>';
+    });
+    html += '<button type="button" class="chip manage" data-action="languages" ' +
+        'aria-label="Choose which languages to show" title="Languages">' +
+        '<svg width="18" height="18"><use href="#i-sliders"/></svg></button></div>';
+
+    // Sections: the language you read most recently comes first
+    const shown = (homeFilter === "all" ? visible : [homeFilter]).slice();
+    const newest = prefix => Math.max(0, ...byLanguage[prefix].map(e => e.status.at));
+    shown.sort((a, b) => (newest(b) - newest(a)) || (visible.indexOf(a) - visible.indexOf(b)));
+
+    if (shown.length === 0) {
+        html += '<p class="empty-state">All languages are hidden.<br>Use the button above to show them.</p>';
+    }
+    shown.forEach(prefix => {
+        const info = languageInfo(prefix);
+        html += '<section class="lang-section" style="--c:' + info.color + '"><h2>' +
+            escapeHtml(info.name) + '</h2>' +
+            byLanguage[prefix].map(e => lessonCardHtml(e.lesson, e.status, nextUpId[prefix] === e.lesson.id)).join("") +
+            '</section>';
+    });
+
+    libraryList.innerHTML = html;
+    libraryList.scrollTop = scrollTop;
+    addLessonLabel.textContent = homeFilter === "all"
+        ? "Add lesson" : "Add " + languageInfo(homeFilter).name + " lesson";
+}
+
+// One listener for everything on the home list (cards, chips, delete buttons)
+libraryList.addEventListener("click", function(event) {
+    const target = event.target.closest("[data-open], [data-delete], [data-filter], [data-action]");
+    if (!target) return;
+    if (target.dataset.open) {
+        openLesson(target.dataset.open);
+    } else if (target.dataset.delete) {
+        deleteLesson(target.dataset.delete);
+    } else if (target.dataset.filter) {
+        homeFilter = target.dataset.filter;
+        saveHomeChoices();
+        renderLibrary();
+    } else if (target.dataset.action === "languages") {
+        openLanguagesPanel();
+    }
+});
+
+// ── Choosing which languages to show ──────────────────────────────
+function openLanguagesPanel() {
+    languagesList.innerHTML = presentLanguages().map(prefix => {
+        const info = languageInfo(prefix);
+        const count = library.filter(l => languagePrefix(l.l2Code) === prefix).length;
+        return '<label class="language-row" style="--c:' + info.color + '">' +
+            '<span class="language-dot"></span>' +
+            '<span class="language-name">' + escapeHtml(info.name) + '</span>' +
+            '<span class="language-count">' + count + ' lesson' + (count === 1 ? '' : 's') + '</span>' +
+            '<input type="checkbox" class="switch" data-lang="' + prefix + '"' +
+            (hiddenLanguages.has(prefix) ? '' : ' checked') + '></label>';
+    }).join("");
+    languagesPanel.hidden = false;
+}
+
+languagesList.addEventListener("change", function(event) {
+    const box = event.target.closest("input[data-lang]");
+    if (!box) return;
+    if (box.checked) hiddenLanguages.delete(box.dataset.lang);
+    else hiddenLanguages.add(box.dataset.lang);
+    saveHomeChoices();
+    renderLibrary();
+});
+
+function closeLanguagesPanel() {
+    languagesPanel.hidden = true;
+}
+document.getElementById("languages-close").addEventListener("click", closeLanguagesPanel);
+document.getElementById("languages-done").addEventListener("click", closeLanguagesPanel);
+languagesPanel.addEventListener("click", function(event) {
+    if (event.target === languagesPanel) closeLanguagesPanel();
+});
+
+// When you press "Add lesson" the import screen starts on the right languages:
+// the language you are viewing, otherwise the ones you used last time.
+function applyImportLanguageDefaults() {
+    const hasOption = (select, value) => [...select.options].some(o => o.value === value);
+    let l2 = "es-ES";
+    let l1 = "en-GB";
+    try {
+        l2 = localStorage.getItem("lastImportL2") || l2;
+        l1 = localStorage.getItem("lastImportL1") || l1;
+    } catch (e) {}
+
+    if (homeFilter !== "all") {
+        const mine = library
+            .filter(l => languagePrefix(l.l2Code) === homeFilter)
+            .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+        if (mine.length > 0) {
+            l2 = mine[0].l2Code;
+            l1 = mine[0].l1Code || l1;
+        } else {
+            const option = [...l2LanguageSelect.options].find(o => languagePrefix(o.value) === homeFilter);
+            if (option) l2 = option.value;
+        }
+    }
+    if (hasOption(l2LanguageSelect, l2)) l2LanguageSelect.value = l2;
+    if (hasOption(l1LanguageSelect, l1)) l1LanguageSelect.value = l1;
 }
 
 function deleteLesson(lessonId) {
@@ -648,6 +893,7 @@ let pendingImportFile = null;
 
 addLessonButton.addEventListener("click", function() {
     closeAllModals();
+    applyImportLanguageDefaults();
     importPanel.hidden = false;
     importTitleInput.value = "";
     importFileInput.value = "";
@@ -719,6 +965,17 @@ importConfirmButton.addEventListener("click", async function() {
                   "then import again.");
             return;
         }
+
+        try {
+            localStorage.setItem("lastImportL2", l2Code);
+            localStorage.setItem("lastImportL1", l1Code);
+        } catch (e) {}
+
+        // Make sure the lesson you just added is visible on the home screen
+        const importedLanguage = languagePrefix(l2Code);
+        hiddenLanguages.delete(importedLanguage);
+        if (homeFilter !== "all") homeFilter = importedLanguage;
+        saveHomeChoices();
 
         importPanel.hidden = true;
         renderLibrary();
@@ -1602,6 +1859,7 @@ function finishLessonSpeech() {
     const next = autoNextLesson ? findNextLesson() : null;
     if (next) {
         ttsLog("end of lesson -> next lesson");
+        currentPage = pages.length - 1;       // so this lesson is recorded as finished
         openLesson(next.id, { replace: true, fromStart: true, autoplay: true });
         return;
     }
@@ -1632,11 +1890,61 @@ function openGotoPanel() {
     gotoTotal.textContent = "of " + realPageCount();
     gotoInput.max = realPageCount();
     gotoInput.value = pages[currentPage]?.isEnd ? "" : String(currentPage + 1);
+    updateGotoArrows();
     gotoPanel.hidden = false;
 }
 
 function closeGotoPanel() {
     gotoPanel.hidden = true;
+}
+
+const gotoPrev = document.getElementById("goto-prev");
+const gotoNext = document.getElementById("goto-next");
+
+// The number in the box, or (if it is empty) the page you are on now.
+function gotoNumber() {
+    const typed = parseInt(gotoInput.value, 10);
+    if (Number.isFinite(typed)) return typed;
+    return pages[currentPage]?.isEnd ? realPageCount() : currentPage + 1;
+}
+
+function updateGotoArrows() {
+    const count = realPageCount();
+    const number = gotoNumber();
+    gotoPrev.disabled = number <= 1;
+    gotoNext.disabled = number >= count;
+}
+
+// Arrows change the number in the box (you still press Go, or type instead).
+function gotoStep(delta) {
+    const count = realPageCount();
+    if (count === 0) return;
+    gotoInput.value = String(Math.max(1, Math.min(count, gotoNumber() + delta)));
+    updateGotoArrows();
+}
+
+// Tap = one step; hold = keeps stepping, so big jumps are quick.
+function holdToStep(button, delta) {
+    let startTimer = null;
+    let repeatTimer = null;
+    function stop() {
+        clearTimeout(startTimer);
+        clearInterval(repeatTimer);
+        startTimer = repeatTimer = null;
+    }
+    button.addEventListener("pointerdown", function() {
+        if (button.disabled) return;
+        gotoStep(delta);
+        startTimer = setTimeout(function() {
+            repeatTimer = setInterval(function() { gotoStep(delta); }, 90);
+        }, 450);
+    });
+    ["pointerup", "pointerleave", "pointercancel", "blur"].forEach(function(name) {
+        button.addEventListener(name, stop);
+    });
+    button.addEventListener("click", function(event) {     // keyboard or screen reader activation
+        if (event.detail === 0) gotoStep(delta);
+    });
 }
 
 function submitGoto() {
@@ -1647,6 +1955,9 @@ function submitGoto() {
 }
 
 pageNumber.addEventListener("click", openGotoPanel);
+holdToStep(gotoPrev, -1);
+holdToStep(gotoNext, 1);
+gotoInput.addEventListener("input", updateGotoArrows);
 document.getElementById("goto-close").addEventListener("click", closeGotoPanel);
 gotoPanel.addEventListener("click", function(event) {
     if (event.target === gotoPanel) closeGotoPanel();        // tap outside the card
@@ -1795,12 +2106,14 @@ document.addEventListener("keydown", function(event) {
         if (!settingsPanel.hidden) { settingsPanel.hidden = true; return; }
         if (!importPanel.hidden) { importPanel.hidden = true; return; }
         if (!gotoPanel.hidden) { gotoPanel.hidden = true; return; }
+        if (!languagesPanel.hidden) { languagesPanel.hidden = true; return; }
     }
 
     if (readerScreen.hidden) return;
     if (!settingsPanel.hidden) return;
     if (!importPanel.hidden) return;
     if (!gotoPanel.hidden) return;
+    if (!languagesPanel.hidden) return;
 
     if (event.target.matches("input, textarea, select") ||
         event.target.isContentEditable) return;
