@@ -912,6 +912,10 @@ body.on-home { background-color: #090d16; }
 .sheet-note { margin: 6px 0 14px; font-size: 12px; line-height: 1.5; color: #888; }
 .sheet-done { width: 100%; }
 
+/* Nothing in the home list may be squashed to fit: the list scrolls instead.
+   (The chip row was being squeezed flat because it is allowed to scroll sideways.) */
+.library > * { flex-shrink: 0; }
+
 /* The language chips stay in view while the list scrolls underneath */
 .chips {
     position: sticky;

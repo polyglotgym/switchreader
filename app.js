@@ -2,7 +2,7 @@
 //  SWITCHREADER — parallel-text lesson reader
 // ═══════════════════════════════════════════════════════════════
 
-const APP_BUILD = "2026-11-22h";   // shown at the bottom of Settings: tells you which build is running
+const APP_BUILD = "2026-11-22i";   // shown at the bottom of Settings: tells you which build is running
 
 // Some browsers have no text-to-speech at all. Remember that, and give the
 // rest of the code a harmless stand-in so the app still loads and reads.
