@@ -2,7 +2,7 @@
 //  SWITCHREADER — parallel-text lesson reader
 // ═══════════════════════════════════════════════════════════════
 
-const APP_BUILD = "2026-11-24a";   // shown at the bottom of Settings: tells you which build is running
+const APP_BUILD = "2026-11-24b";   // shown at the bottom of Settings: tells you which build is running
 let offlineStatusEl = null;        // the small "Offline ready" line under it
 
 // Some browsers have no text-to-speech at all. Remember that, and give the
@@ -553,10 +553,25 @@ function earbudSkip(direction) {
     }
 }
 
+// One earbud press arrives as "play" or "pause" depending on what the phone
+// believes is happening. Because the quiet sound is always playing, the phone
+// may send "pause" even when reading is stopped. So both act as a toggle,
+// based on what the app itself knows: reading -> stop, stopped -> start.
+let lastEarbudToggleAt = 0;
+function earbudToggle() {
+    const now = performance.now();
+    if (now - lastEarbudToggleAt < 500) {
+        ttsLog("earbud: ignored a repeat press");
+        return;
+    }
+    lastEarbudToggleAt = now;
+    ttsButton.click();           // the on-screen Play/Stop button already does exactly this
+}
+
 function setMediaAction(name, action) {
     try {
         navigator.mediaSession.setActionHandler(name, action ? function() {
-            ttsLog("earbud: " + name);
+            ttsLog("earbud: " + name + " (reading=" + (isSpeaking && !ttsStopped) + ")");
             if (!earbudButtons || !currentLessonId) return;
             action();
         } : null);
@@ -568,12 +583,8 @@ function setMediaAction(name, action) {
 function setEarbudHandlers(on) {
     if (!hasMediaSession || earbudHandlersSet === on) return;
     earbudHandlersSet = on;
-    setMediaAction("play", on ? function() {
-        if (!(isSpeaking && !ttsStopped)) ttsButton.click();
-    } : null);
-    setMediaAction("pause", on ? function() {
-        if (isSpeaking && !ttsStopped) stopTts(true);
-    } : null);
+    setMediaAction("play", on ? earbudToggle : null);
+    setMediaAction("pause", on ? earbudToggle : null);
     setMediaAction("nexttrack", on ? function() { earbudSkip(1); } : null);
     setMediaAction("previoustrack", on ? function() { earbudSkip(-1); } : null);
 }
