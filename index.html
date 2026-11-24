@@ -15,7 +15,7 @@
     <meta name="apple-mobile-web-app-title" content="SwitchReader">
     <link rel="apple-touch-icon" href="apple-touch-icon.png">
 
-    <link rel="stylesheet" href="style.css?v=30">
+    <link rel="stylesheet" href="style.css?v=31">
 </head>
 <body>
 
@@ -229,6 +229,26 @@
             </label>
         </div>
 
+        <div class="card-section">
+            <h3 class="section-header">Earbuds and headset</h3>
+
+            <label class="toggle-row">
+                <div class="toggle-label">
+                    <div class="toggle-title">Earbud buttons</div>
+                    <div class="toggle-hint">Lets the buttons on your earbuds or headset control reading: one press plays or pauses, two presses skip forward, three presses skip back. While a lesson is open, the app plays an inaudible sound in the background so your phone sends it the button presses, and a media notification appears.</div>
+                </div>
+                <input type="checkbox" id="earbud-buttons" class="switch">
+            </label>
+
+            <div class="select-row">
+                <label for="earbud-skip-unit" class="toggle-title">Two or three presses skip by</label>
+                <select id="earbud-skip-unit">
+                    <option value="sentence">Sentence</option>
+                    <option value="page">Page</option>
+                </select>
+            </div>
+        </div>
+
         <div class="reset-section">
             <button type="button" id="reset-settings-button" class="reset-button">Reset to defaults</button>
             <div class="toggle-hint">Puts every setting back to how it was when you first installed the app. Your lessons and reading positions are not affected.</div>
@@ -387,7 +407,7 @@
         document.head.appendChild(xlsxFallback);
     }
 </script>
-<script src="app.js?v=30"></script>
+<script src="app.js?v=31"></script>
 
 </body>
 </html>

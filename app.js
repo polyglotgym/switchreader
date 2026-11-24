@@ -2,7 +2,7 @@
 //  SWITCHREADER — parallel-text lesson reader
 // ═══════════════════════════════════════════════════════════════
 
-const APP_BUILD = "2026-11-23d";   // shown at the bottom of Settings: tells you which build is running
+const APP_BUILD = "2026-11-24a";   // shown at the bottom of Settings: tells you which build is running
 let offlineStatusEl = null;        // the small "Offline ready" line under it
 
 // Some browsers have no text-to-speech at all. Remember that, and give the
@@ -482,6 +482,155 @@ followTogetherCheckbox.addEventListener("change", function() {
 
 
 // ═══════════════════════════════════════════════════════════════
+//  EARBUD / HEADSET BUTTONS
+// ═══════════════════════════════════════════════════════════════
+// Phones only send earbud button presses to an app they think is a media
+// player, and they do not count text-to-speech as media. So while a lesson
+// is open (and the switch is on) we loop an inaudible 10-second sound and
+// tell the phone "I am a media player" through the Media Session API.
+// Earbud presses then arrive as play / pause / next / previous.
+
+const earbudCheckbox = document.getElementById("earbud-buttons");
+const earbudSkipSelect = document.getElementById("earbud-skip-unit");
+let earbudButtons = localStorage.getItem("earbudButtons") === "true";          // off until the user switches it on
+let earbudSkipUnit = localStorage.getItem("earbudSkipUnit") === "page" ? "page" : "sentence";
+earbudCheckbox.checked = earbudButtons;
+earbudSkipSelect.value = earbudSkipUnit;
+
+let earbudAudio = null;            // the silent looping sound (made the first time it is needed)
+let earbudAudioWanted = false;     // true while we want it playing
+let earbudHandlersSet = false;
+const hasMediaSession = "mediaSession" in navigator;
+
+// Builds 10 seconds of silence as a tiny sound file in memory, so there is
+// no extra file to download or keep for offline use.
+function makeSilentSoundUrl() {
+    const rate = 8000;
+    const count = rate * 10;
+    const buffer = new ArrayBuffer(44 + count);
+    const view = new DataView(buffer);
+    const text = function(offset, s) {
+        for (let i = 0; i < s.length; i++) view.setUint8(offset + i, s.charCodeAt(i));
+    };
+    text(0, "RIFF");  view.setUint32(4, 36 + count, true);
+    text(8, "WAVE");  text(12, "fmt ");
+    view.setUint32(16, 16, true);   view.setUint16(20, 1, true);   // plain sound data
+    view.setUint16(22, 1, true);                                   // one channel
+    view.setUint32(24, rate, true); view.setUint32(28, rate, true);
+    view.setUint16(32, 1, true);    view.setUint16(34, 8, true);   // 8-bit
+    text(36, "data"); view.setUint32(40, count, true);
+    new Uint8Array(buffer, 44).fill(128);                          // 128 = silence
+    return URL.createObjectURL(new Blob([buffer], { type: "audio/wav" }));
+}
+
+function ensureEarbudAudio() {
+    if (earbudAudio) return earbudAudio;
+    earbudAudio = new Audio(makeSilentSoundUrl());
+    earbudAudio.loop = true;
+    // If the phone pauses the sound on its own (another app took over, for
+    // example), try once to start it again so the buttons keep working.
+    earbudAudio.addEventListener("pause", function() {
+        ttsLog("earbud: quiet sound paused, wanted=" + earbudAudioWanted);
+        if (!earbudAudioWanted) return;
+        setTimeout(function() {
+            if (earbudAudioWanted && earbudAudio.paused) {
+                earbudAudio.play().catch(function(e) { ttsLog("earbud: restart failed " + e); });
+            }
+        }, 500);
+    });
+    return earbudAudio;
+}
+
+// How earbud presses move through the lesson
+function earbudSkip(direction) {
+    const wasPlaying = isSpeaking && !ttsStopped;
+    if (earbudSkipUnit === "page") {
+        if (direction > 0) goToNextPage(); else goToPreviousPage();
+        // Pressing a button while listening should keep the listening going
+        if (wasPlaying && !isSpeaking && pages[currentPage] && !pages[currentPage].isEnd) startTts();
+    } else {
+        moveToSentence(direction);
+    }
+}
+
+function setMediaAction(name, action) {
+    try {
+        navigator.mediaSession.setActionHandler(name, action ? function() {
+            ttsLog("earbud: " + name);
+            if (!earbudButtons || !currentLessonId) return;
+            action();
+        } : null);
+    } catch (e) {
+        ttsLog("earbud: " + name + " not supported here");
+    }
+}
+
+function setEarbudHandlers(on) {
+    if (!hasMediaSession || earbudHandlersSet === on) return;
+    earbudHandlersSet = on;
+    setMediaAction("play", on ? function() {
+        if (!(isSpeaking && !ttsStopped)) ttsButton.click();
+    } : null);
+    setMediaAction("pause", on ? function() {
+        if (isSpeaking && !ttsStopped) stopTts(true);
+    } : null);
+    setMediaAction("nexttrack", on ? function() { earbudSkip(1); } : null);
+    setMediaAction("previoustrack", on ? function() { earbudSkip(-1); } : null);
+}
+
+// Called by setTtsButtonState: keep the phone's idea of playing / paused correct
+function earbudShowState(state) {
+    if (!hasMediaSession || !earbudButtons || !currentLessonId) return;
+    navigator.mediaSession.playbackState = (state === "stop") ? "playing" : "paused";
+}
+
+function earbudStart() {
+    if (!earbudButtons || !currentLessonId || !hasMediaSession) return;
+    setEarbudHandlers(true);
+    earbudAudioWanted = true;
+    ensureEarbudAudio().play().then(function() {
+        ttsLog("earbud: quiet sound playing");
+    }).catch(function(e) {
+        ttsLog("earbud: quiet sound blocked " + e);
+    });
+    try {
+        navigator.mediaSession.metadata = new MediaMetadata({
+            title: (library.find(l => l.id === currentLessonId) || {}).title || "SwitchReader",
+            artist: "SwitchReader",
+            album: currentBook ? currentBook.l2Name : "",
+            artwork: [{ src: "web-app-manifest-512x512.png", sizes: "512x512", type: "image/png" }]
+        });
+    } catch (e) {}
+    navigator.mediaSession.playbackState = (isSpeaking && !ttsStopped) ? "playing" : "paused";
+}
+
+function earbudStop() {
+    earbudAudioWanted = false;
+    if (earbudAudio && !earbudAudio.paused) earbudAudio.pause();
+    if (hasMediaSession) {
+        try { navigator.mediaSession.metadata = null; } catch (e) {}
+        navigator.mediaSession.playbackState = "none";
+    }
+}
+
+earbudCheckbox.addEventListener("change", function() {
+    earbudButtons = earbudCheckbox.checked;
+    localStorage.setItem("earbudButtons", earbudButtons);
+    if (earbudButtons) {
+        if (!hasMediaSession) ttsLog("earbud: this browser has no media session");
+        earbudStart();            // this tap counts as the "user gesture" the phone wants
+    } else {
+        earbudStop();
+        setEarbudHandlers(false);
+    }
+});
+
+earbudSkipSelect.addEventListener("change", function() {
+    earbudSkipUnit = earbudSkipSelect.value === "page" ? "page" : "sentence";
+    localStorage.setItem("earbudSkipUnit", earbudSkipUnit);
+});
+
+// ═══════════════════════════════════════════════════════════════
 //  TTS VOICES
 // ═══════════════════════════════════════════════════════════════
 
@@ -573,6 +722,9 @@ document.getElementById("reset-settings-button").addEventListener("click", funct
     setSwitch(thirdModeCheckbox, true);
     setSwitch(followTogetherCheckbox, true);
     setSwitch(document.getElementById("show-debug-log"), false);
+    setSwitch(earbudCheckbox, false);
+    earbudSkipSelect.value = "sentence";
+    earbudSkipSelect.dispatchEvent(new Event("change"));
 
     // Voices: back to Automatic for every language
     selectedTtsVoiceURI = "";
@@ -585,7 +737,8 @@ document.getElementById("reset-settings-button").addEventListener("click", funct
         "ttsHighlightEnabled", "tapStartsTts", "continueTtsOnPageTurn",
         "autoNextLesson", "nextSameLanguage", "thirdModeEnabled",
         "blankModeEnabled", "followTogether", "showDebugLog",
-        "perLanguageSettings", LANG_SETTINGS_KEY
+        "perLanguageSettings", LANG_SETTINGS_KEY,
+        "earbudButtons", "earbudSkipUnit"
     ].forEach(function(key) { localStorage.removeItem(key); });
     Object.keys(localStorage)
         .filter(function(key) { return key.startsWith("ttsVoiceURI_"); })
@@ -1064,6 +1217,7 @@ function openLesson(lessonId, options = {}) {
     displayMode = restoredMode;
 
     displayPage();
+    earbudStart();                       // earbud buttons (does nothing unless switched on)
     if (options.autoplay) startTts();
 }
 
@@ -1077,6 +1231,7 @@ function goHome() {
     saveCurrentPosition();
     currentLessonId = null;
     currentBook = null;
+    earbudStop();
     showHomeScreen();
 }
 
@@ -1668,6 +1823,7 @@ function setTtsButtonState(state) {
         ttsButton.setAttribute("title", "Play");
         ttsButton.setAttribute("aria-label", "Play");
     }
+    earbudShowState(state);
 }
 
 // Event log. It always records into memory (no DOM writes, so it cannot
