@@ -2,7 +2,7 @@
 //  SWITCHREADER — parallel-text lesson reader
 // ═══════════════════════════════════════════════════════════════
 
-const APP_BUILD = "2026-11-24c";   // shown at the bottom of Settings: tells you which build is running
+const APP_BUILD = "2026-11-24d";   // shown at the bottom of Settings: tells you which build is running
 let offlineStatusEl = null;        // the small "Offline ready" line under it
 
 // Some browsers have no text-to-speech at all. Remember that, and give the
@@ -505,6 +505,11 @@ document.addEventListener("visibilitychange", function() {
     if (earbudButtons) earbudLog("earbud: page " + document.visibilityState);
 });
 
+// EXPERIMENT (build d). true  = the quiet sound plays only while reading, like a
+// normal music player (so the phone's "playing / paused" matches what you hear).
+// false = it plays the whole time a lesson is open (the earlier behaviour).
+const EARBUD_SOUND_ONLY_WHILE_READING = true;
+
 let earbudAudio = null;            // the silent looping sound (made the first time it is needed)
 let earbudAudioWanted = false;     // true while we want it playing
 let earbudHandlersSet = false;
@@ -577,6 +582,18 @@ function earbudToggle() {
     ttsButton.click();           // the on-screen Play/Stop button already does exactly this
 }
 
+// Turns the quiet sound on or off (never when earbud buttons are off / no lesson is open)
+function earbudSetSound(on) {
+    if (!earbudButtons || !currentLessonId) return;
+    earbudAudioWanted = on;
+    const sound = ensureEarbudAudio();
+    if (on) {
+        sound.play().catch(function(e) { earbudLog("earbud: quiet sound blocked " + e); });
+    } else if (!sound.paused) {
+        sound.pause();
+    }
+}
+
 function setMediaAction(name, action) {
     try {
         navigator.mediaSession.setActionHandler(name, action ? function() {
@@ -603,17 +620,13 @@ function setEarbudHandlers(on) {
 function earbudShowState(state) {
     if (!hasMediaSession || !earbudButtons || !currentLessonId) return;
     navigator.mediaSession.playbackState = (state === "stop") ? "playing" : "paused";
+    if (EARBUD_SOUND_ONLY_WHILE_READING) earbudSetSound(state === "stop");
 }
 
 function earbudStart() {
     if (!earbudButtons || !currentLessonId || !hasMediaSession) return;
     setEarbudHandlers(true);
-    earbudAudioWanted = true;
-    ensureEarbudAudio().play().then(function() {
-        ttsLog("earbud: quiet sound playing");
-    }).catch(function(e) {
-        ttsLog("earbud: quiet sound blocked " + e);
-    });
+    earbudSetSound(EARBUD_SOUND_ONLY_WHILE_READING ? (isSpeaking && !ttsStopped) : true);
     try {
         navigator.mediaSession.metadata = new MediaMetadata({
             title: (library.find(l => l.id === currentLessonId) || {}).title || "SwitchReader",
