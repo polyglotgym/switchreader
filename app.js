@@ -2,7 +2,7 @@
 //  SWITCHREADER — parallel-text lesson reader
 // ═══════════════════════════════════════════════════════════════
 
-const APP_BUILD = "2026-11-24b";   // shown at the bottom of Settings: tells you which build is running
+const APP_BUILD = "2026-11-24c";   // shown at the bottom of Settings: tells you which build is running
 let offlineStatusEl = null;        // the small "Offline ready" line under it
 
 // Some browsers have no text-to-speech at all. Remember that, and give the
@@ -497,6 +497,14 @@ let earbudSkipUnit = localStorage.getItem("earbudSkipUnit") === "page" ? "page" 
 earbudCheckbox.checked = earbudButtons;
 earbudSkipSelect.value = earbudSkipUnit;
 
+// Earbud log lines carry a seconds stamp so gaps between presses are visible
+function earbudLog(message) {
+    ttsLog((Math.floor(performance.now() / 1000) % 1000) + "s " + message);
+}
+document.addEventListener("visibilitychange", function() {
+    if (earbudButtons) earbudLog("earbud: page " + document.visibilityState);
+});
+
 let earbudAudio = null;            // the silent looping sound (made the first time it is needed)
 let earbudAudioWanted = false;     // true while we want it playing
 let earbudHandlersSet = false;
@@ -527,10 +535,11 @@ function ensureEarbudAudio() {
     if (earbudAudio) return earbudAudio;
     earbudAudio = new Audio(makeSilentSoundUrl());
     earbudAudio.loop = true;
+    earbudAudio.addEventListener("play", function() { earbudLog("earbud: quiet sound started"); });
     // If the phone pauses the sound on its own (another app took over, for
     // example), try once to start it again so the buttons keep working.
     earbudAudio.addEventListener("pause", function() {
-        ttsLog("earbud: quiet sound paused, wanted=" + earbudAudioWanted);
+        earbudLog("earbud: quiet sound paused, wanted=" + earbudAudioWanted);
         if (!earbudAudioWanted) return;
         setTimeout(function() {
             if (earbudAudioWanted && earbudAudio.paused) {
@@ -561,7 +570,7 @@ let lastEarbudToggleAt = 0;
 function earbudToggle() {
     const now = performance.now();
     if (now - lastEarbudToggleAt < 500) {
-        ttsLog("earbud: ignored a repeat press");
+        earbudLog("earbud: ignored a repeat press");
         return;
     }
     lastEarbudToggleAt = now;
@@ -571,7 +580,8 @@ function earbudToggle() {
 function setMediaAction(name, action) {
     try {
         navigator.mediaSession.setActionHandler(name, action ? function() {
-            ttsLog("earbud: " + name + " (reading=" + (isSpeaking && !ttsStopped) + ")");
+            earbudLog("earbud: " + name + " (reading=" + (isSpeaking && !ttsStopped) +
+                      ", sound=" + (earbudAudio && !earbudAudio.paused ? "on" : "off") + ")");
             if (!earbudButtons || !currentLessonId) return;
             action();
         } : null);
