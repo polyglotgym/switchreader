@@ -2,7 +2,7 @@
 //  SWITCHREADER — parallel-text lesson reader
 // ═══════════════════════════════════════════════════════════════
 
-const APP_BUILD = "2026-11-25b";   // shown at the bottom of Settings: tells you which build is running
+const APP_BUILD = "2026-11-25c";   // shown at the bottom of Settings: tells you which build is running
 let offlineStatusEl = null;        // the small "Offline ready" line under it
 
 // Some browsers have no text-to-speech at all. Remember that, and give the
@@ -2012,16 +2012,23 @@ function startTts() {
 // What gets spoken for one sentence, as a short list of steps.
 // Normal is always just the L2 text. A sentence with no L1 text is
 // simply read in Normal style, so there is never a pointless gap.
+// In the two gap patterns, a short fixed pause ends every sentence, so the
+// last point has a moment to sink in before the next one starts.
+const SENTENCE_PAUSE_SECONDS = 0.5;
+
 function buildSpeechSteps(page, index) {
     const l2 = { kind: "l2", text: page.l2[index] };
     if (readingPattern === "normal") return [l2];
 
+    const pause = { kind: "gap", seconds: SENTENCE_PAUSE_SECONDS };
     const l1Text = String((page.l1 || [])[index] ?? "").trim();
-    if (!l1Text) return [l2];
+    if (!l1Text) return [l2, pause];
 
     const l1 = { kind: "l1", text: l1Text };
     const gap = { kind: "gap", seconds: gapSeconds };
-    return readingPattern === "l1-l2" ? [l1, gap, l2] : [l2, gap, l1, l2];
+    const steps = readingPattern === "l1-l2" ? [l1, gap, l2] : [l2, gap, l1, l2];
+    steps.push(pause);
+    return steps;
 }
 
 function speakNextSentence(attempt = 0, stepIndex = 0) {
