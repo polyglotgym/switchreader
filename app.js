@@ -2,7 +2,7 @@
 //  SWITCHREADER — parallel-text lesson reader
 // ═══════════════════════════════════════════════════════════════
 
-const APP_BUILD = "2026-11-25a";   // shown at the bottom of Settings: tells you which build is running
+const APP_BUILD = "2026-11-25b";   // shown at the bottom of Settings: tells you which build is running
 let offlineStatusEl = null;        // the small "Offline ready" line under it
 
 // Some browsers have no text-to-speech at all. Remember that, and give the
@@ -480,6 +480,48 @@ followTogetherCheckbox.addEventListener("change", function() {
     localStorage.setItem("followTogether", followTogether);
 });
 
+// Reading pattern: what is spoken for each sentence.
+//   normal   = the L2 sentence only (the way the app has always worked)
+//   l1-l2    = L1, a gap for you to say it aloud, then L2
+//   l2-l1-l2 = L2, a gap, then L1, then L2 again
+// One setting for the whole app. "Gap length" only matters for the last two.
+const readingPatternSelect = document.getElementById("reading-pattern");
+const gapRow = document.getElementById("gap-row");
+const gapSlider = document.getElementById("gap-seconds");
+const gapValue = document.getElementById("gap-seconds-value");
+const READING_PATTERNS = ["normal", "l1-l2", "l2-l1-l2"];
+let readingPattern = READING_PATTERNS.includes(localStorage.getItem("readingPattern"))
+    ? localStorage.getItem("readingPattern") : "normal";
+let gapSeconds = parseFloat(localStorage.getItem("gapSeconds"));
+if (isNaN(gapSeconds)) gapSeconds = 3;
+gapSeconds = Math.min(8, Math.max(1, gapSeconds));
+
+function showGap(value) {
+    gapSeconds = value;
+    gapSlider.value = value;
+    gapValue.textContent = value.toFixed(1) + " s";
+}
+
+function showPatternSettings() {
+    readingPatternSelect.value = readingPattern;
+    gapRow.hidden = (readingPattern === "normal");   // nothing to set for Normal
+}
+
+showGap(gapSeconds);
+showPatternSettings();
+
+readingPatternSelect.addEventListener("change", function() {
+    readingPattern = READING_PATTERNS.includes(readingPatternSelect.value)
+        ? readingPatternSelect.value : "normal";
+    localStorage.setItem("readingPattern", readingPattern);
+    showPatternSettings();
+});
+
+gapSlider.addEventListener("input", function() {
+    showGap(parseFloat(gapSlider.value));
+    localStorage.setItem("gapSeconds", gapSeconds);
+});
+
 
 // ═══════════════════════════════════════════════════════════════
 //  EARBUD / HEADSET BUTTONS
@@ -755,6 +797,9 @@ document.getElementById("reset-settings-button").addEventListener("click", funct
     setSwitch(nextSameLanguageCheckbox, true);
     setSwitch(thirdModeCheckbox, true);
     setSwitch(followTogetherCheckbox, true);
+    readingPatternSelect.value = "normal";
+    readingPatternSelect.dispatchEvent(new Event("change"));
+    setSlider(gapSlider, "3");
     setSwitch(document.getElementById("show-debug-log"), false);
     setSwitch(earbudCheckbox, false);
     earbudSkipSelect.value = "sentence";
@@ -772,7 +817,8 @@ document.getElementById("reset-settings-button").addEventListener("click", funct
         "autoNextLesson", "nextSameLanguage", "thirdModeEnabled",
         "blankModeEnabled", "followTogether", "showDebugLog",
         "perLanguageSettings", LANG_SETTINGS_KEY,
-        "earbudButtons", "earbudSkipUnit"
+        "earbudButtons", "earbudSkipUnit",
+        "readingPattern", "gapSeconds"
     ].forEach(function(key) { localStorage.removeItem(key); });
     Object.keys(localStorage)
         .filter(function(key) { return key.startsWith("ttsVoiceURI_"); })
@@ -1963,7 +2009,22 @@ function startTts() {
     }
 }
 
-function speakNextSentence(attempt = 0) {
+// What gets spoken for one sentence, as a short list of steps.
+// Normal is always just the L2 text. A sentence with no L1 text is
+// simply read in Normal style, so there is never a pointless gap.
+function buildSpeechSteps(page, index) {
+    const l2 = { kind: "l2", text: page.l2[index] };
+    if (readingPattern === "normal") return [l2];
+
+    const l1Text = String((page.l1 || [])[index] ?? "").trim();
+    if (!l1Text) return [l2];
+
+    const l1 = { kind: "l1", text: l1Text };
+    const gap = { kind: "gap", seconds: gapSeconds };
+    return readingPattern === "l1-l2" ? [l1, gap, l2] : [l2, gap, l1, l2];
+}
+
+function speakNextSentence(attempt = 0, stepIndex = 0) {
 
     const sessionId = ttsSessionId;
     const sentences = pages[currentPage].l2;
@@ -1983,15 +2044,46 @@ function speakNextSentence(attempt = 0) {
         return;
     }
 
-    const utterance = new SpeechSynthesisUtterance(sentences[currentSentenceIndex]);
+    // One sentence can be several steps (say L1, wait, say L2 ...).
+    // This call does one step, then asks for the next.
+    const steps = buildSpeechSteps(pages[currentPage], currentSentenceIndex);
+    const step = steps[stepIndex];
+    const isLastStep = stepIndex >= steps.length - 1;
+
+    function afterStep() {
+        if (isLastStep) {
+            currentSentenceIndex++;
+            speakNextSentence();
+        } else {
+            speakNextSentence(0, stepIndex + 1);
+        }
+    }
+
+    // A gap is just waiting. Stop, a page turn or a new tap all end the
+    // session, and the check below then lets the wait fizzle out.
+    if (step.kind === "gap") {
+        currentUtterance = null;
+        ttsLog("gap " + step.seconds + "s");
+        setTimeout(function() {
+            if (sessionId !== ttsSessionId || ttsStopped || !isSpeaking) return;
+            afterStep();
+        }, step.seconds * 1000);
+        return;
+    }
+
+    const utterance = new SpeechSynthesisUtterance(step.text);
     currentUtterance = utterance;
     let started = false;
     let wordEvents = 0;                       // how many "now on word N" reports the voice gave
-    const sentenceLength = sentences[currentSentenceIndex].length;
+    const sentenceLength = step.text.length;
 
-    utterance.lang = currentBook ? currentBook.l2Code : "en-GB";
+    // L1 steps use the L1 language and the phone's automatic voice for it.
+    // The voice you picked in Settings belongs to L2 only.
+    utterance.lang = currentBook
+        ? (step.kind === "l1" ? currentBook.l1Code : currentBook.l2Code)
+        : "en-GB";
 
-    if (selectedTtsVoiceURI) {
+    if (step.kind === "l2" && selectedTtsVoiceURI) {
         const selectedVoice = availableTtsVoices.find(
             voice => voice.voiceURI === selectedTtsVoiceURI
         );
@@ -2017,13 +2109,14 @@ function speakNextSentence(attempt = 0) {
         if (synth.speaking || synth.pending) synth.cancel();
         setTimeout(function() {
             if (sessionId !== ttsSessionId || ttsStopped || !isSpeaking) return;
-            speakNextSentence(attempt + 1);
+            speakNextSentence(attempt + 1, stepIndex);
         }, 200);
         return true;
     }
 
     utterance.onboundary = function(event) {
         if (!isLive()) return;
+        if (step.kind !== "l2") return;       // following along only makes sense in L2
         if (event.name && event.name !== "word") return;
         wordEvents++;
         followSpokenPosition(event.charIndex || 0, sentenceLength);
@@ -2032,14 +2125,13 @@ function speakNextSentence(attempt = 0) {
     utterance.onstart = function() {
         if (!isLive()) return;
         started = true;
-        ttsLog("start");
+        ttsLog("start " + step.kind);
     };
 
     utterance.onend = function() {
         if (!isLive()) return;
-        ttsLog("end, word events: " + wordEvents);
-        currentSentenceIndex++;
-        speakNextSentence();
+        ttsLog("end " + step.kind + ", word events: " + wordEvents);
+        afterStep();
     };
 
     utterance.onerror = function(event) {
@@ -2057,11 +2149,11 @@ function speakNextSentence(attempt = 0) {
     };
 
     // Call speak FIRST to preserve the user gesture window on Android
-    ttsLog("speak (attempt " + attempt + ")");
+    ttsLog("speak " + step.kind + " (attempt " + attempt + ")");
     window.speechSynthesis.speak(utterance);
 
-    // THEN update the UI (once per sentence)
-    displayPage();
+    // THEN update the UI (once per sentence, on its first step)
+    if (stepIndex === 0) displayPage();
 
     // Watchdog: some engines drop the utterance without any event at all.
     setTimeout(function() {

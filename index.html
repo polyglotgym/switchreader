@@ -173,6 +173,24 @@
         <div class="card-section">
             <h3 class="section-header">Reading</h3>
 
+            <div class="select-row">
+                <label for="reading-pattern" class="toggle-title">Reading pattern</label>
+                <select id="reading-pattern">
+                    <option value="normal">Normal: L2 only</option>
+                    <option value="l1-l2">L1, gap, L2</option>
+                    <option value="l2-l1-l2">L2, gap, L1, L2</option>
+                </select>
+            </div>
+
+            <div class="slider-row" id="gap-row" hidden>
+                <div class="slider-header">
+                    <label for="gap-seconds" class="slider-label">Gap length</label>
+                    <span class="slider-value" id="gap-seconds-value">3.0 s</span>
+                </div>
+                <input type="range" id="gap-seconds" min="1" max="8" step="0.5" value="3">
+                <div class="toggle-hint">Use the gap to say the sentence aloud.</div>
+            </div>
+
             <label class="toggle-row">
                 <div class="toggle-label">
                     <div class="toggle-title">Highlight current sentence</div>
@@ -407,7 +425,7 @@
         document.head.appendChild(xlsxFallback);
     }
 </script>
-<script src="app.js?v=35"></script>
+<script src="app.js?v=36"></script>
 
 </body>
 </html>
