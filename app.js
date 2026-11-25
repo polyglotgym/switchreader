@@ -2,7 +2,7 @@
 //  SWITCHREADER — parallel-text lesson reader
 // ═══════════════════════════════════════════════════════════════
 
-const APP_BUILD = "2026-11-24d";   // shown at the bottom of Settings: tells you which build is running
+const APP_BUILD = "2026-11-25a";   // shown at the bottom of Settings: tells you which build is running
 let offlineStatusEl = null;        // the small "Offline ready" line under it
 
 // Some browsers have no text-to-speech at all. Remember that, and give the
@@ -893,21 +893,25 @@ function readLessonPosition(lessonId) {
     }
 }
 
-// { state: "new" | "reading" | "done", current, total, percent, at }
+// { state: "new" | "reading" | "done", current, total, percent, at, finishedBefore }
+// "done" means finished and still sitting at the end. A lesson finished earlier
+// that you are now reading again is "reading", with finishedBefore = true.
 function lessonStatus(lesson) {
     const total = Math.max(1, totalSentences(lesson));
     const position = readLessonPosition(lesson.id);
     if (!position || typeof position.sentence !== "number") {
         return { state: "new", current: 0, total: total, percent: 0, at: 0 };
     }
-    const done = position.finished === true;
+    const finishedBefore = position.finished === true;
+    const done = finishedBefore && Math.floor(position.sentence) >= total - 1;
     const current = done ? total : Math.min(total, Math.floor(position.sentence) + 1);
     return {
         state: done ? "done" : "reading",
         current: current,
         total: total,
         percent: Math.round(current * 100 / total),
-        at: position.at || 0
+        at: position.at || 0,
+        finishedBefore: finishedBefore
     };
 }
 
@@ -930,8 +934,11 @@ function lessonCardHtml(lesson, status, isNextUp) {
             '<span class="progress-text"><span class="done-tag"><svg width="14" height="14"><use href="#i-check"/></svg>Done</span>' +
             '<span>· ' + status.total + ' / ' + status.total + '</span></span>';
     } else if (status.state === "reading") {
+        const finishedMark = status.finishedBefore
+            ? '<span class="done-tag" title="Finished before" aria-label="Finished before"><svg width="14" height="14"><use href="#i-check"/></svg></span>'
+            : '';
         progress = '<span class="progress-track"><span class="progress-fill" style="width:' + status.percent + '%"></span></span>' +
-            '<span class="progress-text"><span><b>' + status.current + '</b> / ' + status.total +
+            '<span class="progress-text">' + finishedMark + '<span><b>' + status.current + '</b> / ' + status.total +
             ' · ' + status.percent + '%</span></span>';
     } else {
         progress = '<span class="progress-text"><span>Not started</span></span>';
@@ -1619,7 +1626,7 @@ function displayPage() {
 
     readingArea.innerHTML = onEnd ? buildEndCardHtml() : texts.map((sentence, index) => {
         const highlight =
-            ttsHighlightEnabled && index === currentSentenceIndex
+            ttsHighlightEnabled && texts.length > 1 && index === currentSentenceIndex
                 ? ' class="tts-current-sentence"'
                 : '';
         // In the third mode, an empty cell still keeps its line so the rest stays lined up.

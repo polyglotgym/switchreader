@@ -15,7 +15,7 @@
     <meta name="apple-mobile-web-app-title" content="SwitchReader">
     <link rel="apple-touch-icon" href="apple-touch-icon.png">
 
-    <link rel="stylesheet" href="style.css?v=31">
+    <link rel="stylesheet" href="style.css?v=32">
 </head>
 <body>
 
@@ -223,7 +223,7 @@
             <label class="toggle-row">
                 <div class="toggle-label">
                     <div class="toggle-title">Remember separate settings for each language</div>
-                    <div class="toggle-hint">Speech speed, font size and line spacing are saved individually for each language you are learning, so you can set these according to preference. Open a lesson to change them. (The reading voice is always saved per language.)</div>
+                    <div class="toggle-hint">Speed, font size and line spacing are saved per language. Open a lesson to change them. The voice is always saved per language.</div>
                 </div>
                 <input type="checkbox" id="per-language-settings" class="switch">
             </label>
@@ -235,7 +235,7 @@
             <label class="toggle-row">
                 <div class="toggle-label">
                     <div class="toggle-title">Earbud buttons</div>
-                    <div class="toggle-hint">Lets the buttons on your earbuds or headset control reading: one press plays or pauses, two presses skip forward, three presses skip back. While a lesson is open, the app plays an inaudible sound in the background so your phone sends it the button presses, and a media notification appears.</div>
+                    <div class="toggle-hint">Earbud presses: 1 = play/pause, 2 = next, 3 = back. Start reading from the screen first.</div>
                 </div>
                 <input type="checkbox" id="earbud-buttons" class="switch">
             </label>
@@ -407,7 +407,7 @@
         document.head.appendChild(xlsxFallback);
     }
 </script>
-<script src="app.js?v=34"></script>
+<script src="app.js?v=35"></script>
 
 </body>
 </html>

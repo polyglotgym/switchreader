@@ -234,7 +234,7 @@ body {
 
 /* Current sentence being read aloud */
 #reading-text p.tts-current-sentence {
-    background-color: #383838;
+    background-color: #2d2d2d;
     border-radius: 4px;
     padding: 0 6px;
     margin-left: -6px;
