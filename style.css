@@ -241,6 +241,12 @@ body {
     margin-right: -6px;
 }
 
+/* Japanese particle colouring (Settings > Reading > Colour Japanese particles) */
+#reading-text .hl-ha  { color: #fbbf24; }   /* は  amber    */
+#reading-text .hl-ga  { color: #38bdf8; }   /* が  sky blue */
+#reading-text .hl-wo  { color: #4ade80; }   /* を  green    */
+#reading-text .hl-end { color: #ffee58; }   /* 。！？ lemon yellow, only in multi-sentence cells */
+
 /* TOP BAR */
 
 .top-bar {

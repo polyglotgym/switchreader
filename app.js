@@ -2,7 +2,7 @@
 //  SWITCHREADER — parallel-text lesson reader
 // ═══════════════════════════════════════════════════════════════
 
-const APP_BUILD = "2026-11-25d";   // shown at the bottom of Settings: tells you which build is running
+const APP_BUILD = "2026-11-26a";   // shown at the bottom of Settings: tells you which build is running
 let offlineStatusEl = null;        // the small "Offline ready" line under it
 
 // Some browsers have no text-to-speech at all. Remember that, and give the
@@ -420,6 +420,119 @@ ttsHighlightCheckbox.addEventListener("change", function() {
     if (!readerScreen.hidden) displayPage();
 });
 
+// Japanese particle colouring: off until the user switches it on.
+// The finder itself (highlightJapanese) is just below.
+const japaneseHighlightCheckbox = document.getElementById("japanese-highlight");
+let japaneseHighlightEnabled = localStorage.getItem("japaneseHighlight") === "true";
+japaneseHighlightCheckbox.checked = japaneseHighlightEnabled;
+japaneseHighlightCheckbox.addEventListener("change", function() {
+    japaneseHighlightEnabled = japaneseHighlightCheckbox.checked;
+    localStorage.setItem("japaneseHighlight", japaneseHighlightEnabled);
+    if (!readerScreen.hidden) displayPage();
+});
+
+// ── Japanese particle colouring ───────────────────────────────────
+// When the switch in Settings is on, Japanese text is shown with は, が and を
+// coloured (amber, blue, green) and, only in cells that hold more than one
+// sentence, the sentence-end marks (。！？) in yellow. This changes how the
+// text LOOKS only: the text that is spoken is never touched.
+//
+// Written as: the finder looks at one cell of text and returns it as HTML
+// with small coloured tags around the characters to colour.
+//
+// Words that only look as if they contain a particle (は, が). Kept in
+// plain hiragana. Add more here whenever you meet one that gets coloured
+// wrongly. Words that START with は are only matched at the start of a cell
+// or after punctuation or a space, because otherwise a real は in front of
+// the next word would be hidden (私はこの本 would match はこ).
+const JA_NOT_PARTICLE_WORDS = [
+    // が inside a word
+    "かがみ", "ちがう", "ちがい", "ひがし", "がっこう", "がんばる", "すがた",
+    "まがる", "さがす", "かがく", "けんがく", "がめん", "おがむ", "とがめる",
+    "ひらがな",
+    // words starting with は, or containing は
+    "はがき", "はこ", "はし", "はな", "はる", "はち", "はやい", "はじめる",
+    "はかる", "はたらく", "はさみ", "おはよう", "はは", "はば"
+];
+
+// Characters after which a new word can start (for the は words above).
+const JA_WORD_START_CHARS = "、。，．！？!?「『（(【［〔〈《・…―—";
+
+// Sentence-end marks, and the closing quotes/brackets that may follow them.
+const JA_END_MARKS = "。．！？!?";
+const JA_CLOSERS = "」』）)】］〕〉》”’\"'";
+
+// A が followed by one of these endings is the end of a verb or adjective
+// (上がる, 広がります, 怖がらない, ほしがって), not a particle.
+const JA_GA_VERB_ENDING = /^(る|っ|りま|りた|り$|り[、。，,\s]|らな|られ|らせ|れば|れる|れた|ろう)/;
+
+function highlightJapanese(text) {
+    const n = text.length;
+    const hidden = new Array(n).fill(false);      // characters that must stay white
+
+    // 1. Mark the characters of the "not a particle" words.
+    JA_NOT_PARTICLE_WORDS.forEach(function(word) {
+        const startsWithHa = word.charAt(0) === "は";
+        let at = text.indexOf(word);
+        while (at !== -1) {
+            const before = at === 0 ? "" : text.charAt(at - 1);
+            const startsAWord = at === 0 || JA_WORD_START_CHARS.includes(before) || /\s/.test(before);
+            if (!startsWithHa || startsAWord) {
+                for (let k = 0; k < word.length; k++) hidden[at + k] = true;
+            }
+            at = text.indexOf(word, at + 1);
+        }
+    });
+
+    // 2. Sentence ends. Only coloured when something follows the first mark,
+    //    meaning the cell holds more than one sentence.
+    const endMark = new Array(n).fill(false);
+    const groups = [];
+    let moreThanOne = false;
+    let i = 0;
+    while (i < n) {
+        if (JA_END_MARKS.includes(text.charAt(i))) {
+            let j = i;
+            while (j < n && JA_END_MARKS.includes(text.charAt(j))) j++;     // ！？ together
+            let k = j;
+            while (k < n && JA_CLOSERS.includes(text.charAt(k))) k++;       // skip 」 etc.
+            if (/\S/.test(text.slice(k))) moreThanOne = true;
+            groups.push([i, j]);
+            i = j;
+        } else {
+            i++;
+        }
+    }
+    if (moreThanOne) {
+        groups.forEach(function(g) {
+            for (let m = g[0]; m < g[1]; m++) endMark[m] = true;
+        });
+    }
+
+    // 3. Go through the text, wrapping what should be coloured.
+    let html = "";
+    for (let p = 0; p < n; p++) {
+        const ch = text.charAt(p);
+        let cls = "";
+        if (endMark[p]) {
+            cls = "hl-end";
+        } else if (!hidden[p]) {
+            if (ch === "を") {
+                cls = "hl-wo";
+            } else if (ch === "は") {
+                if (text.charAt(p - 1) !== "に") cls = "hl-ha";      // には stays white
+            } else if (ch === "が") {
+                const next = text.charAt(p + 1);
+                const commaAfter = next === "、" || next === "，" || next === ",";   // が、 stays white
+                if (!commaAfter && !JA_GA_VERB_ENDING.test(text.slice(p + 1))) cls = "hl-ga";
+            }
+        }
+        html += cls ? '<span class="' + cls + '">' + escapeHtml(ch) + "</span>" : escapeHtml(ch);
+    }
+    return html;
+}
+
+
 // Third mode (the optional third spreadsheet column: romanised text, notes).
 // An existing choice saved under its old name, "blankModeEnabled", carries over.
 const thirdModeCheckbox = document.getElementById("third-mode-enabled");
@@ -813,6 +926,7 @@ document.getElementById("reset-settings-button").addEventListener("click", funct
     setSlider(fontSizeSlider, "22");
     setSlider(lineSpacingSlider, "150");
     setSwitch(ttsHighlightCheckbox, true);
+    setSwitch(japaneseHighlightCheckbox, false);
     setSwitch(tapStartsTtsCheckbox, false);
     setSwitch(continueTtsOnPageTurnCheckbox, false);
     setSwitch(autoNextLessonCheckbox, false);
@@ -841,7 +955,8 @@ document.getElementById("reset-settings-button").addEventListener("click", funct
         "blankModeEnabled", "followTogether", "showDebugLog",
         "perLanguageSettings", LANG_SETTINGS_KEY,
         "earbudButtons", "earbudSkipUnit",
-        "readingPattern", "gapSeconds", "sentencePause"
+        "readingPattern", "gapSeconds", "sentencePause",
+        "japaneseHighlight"
     ].forEach(function(key) { localStorage.removeItem(key); });
     Object.keys(localStorage)
         .filter(function(key) { return key.startsWith("ttsVoiceURI_"); })
@@ -1693,13 +1808,17 @@ function displayPage() {
     if (textLang) readingArea.setAttribute("lang", textLang);
     else readingArea.removeAttribute("lang");
 
+    // Colour the particles only for Japanese text (not the third mode, which has no language).
+    const colourJapanese = japaneseHighlightEnabled && !onEnd && /^ja(-|$)/i.test(textLang || "");
+
     readingArea.innerHTML = onEnd ? buildEndCardHtml() : texts.map((sentence, index) => {
         const highlight =
             ttsHighlightEnabled && texts.length > 1 && index === currentSentenceIndex
                 ? ' class="tts-current-sentence"'
                 : '';
         // In the third mode, an empty cell still keeps its line so the rest stays lined up.
-        const shown = escapeHtml(sentence) || (displayMode === 0 ? "&nbsp;" : "");
+        const shown = (colourJapanese ? highlightJapanese(sentence) : escapeHtml(sentence))
+            || (displayMode === 0 ? "&nbsp;" : "");
         return `<p${highlight}>${shown}</p>`;
     }).join("");
 
