@@ -191,6 +191,15 @@
                 <div class="toggle-hint">Use the gap to say the sentence aloud.</div>
             </div>
 
+            <div class="slider-row" id="pause-row">
+                <div class="slider-header">
+                    <label for="sentence-pause" class="slider-label">Pause between sentences</label>
+                    <span class="slider-value" id="sentence-pause-value">0.0 s</span>
+                </div>
+                <input type="range" id="sentence-pause" min="0" max="10" step="0.5" value="0">
+                <div class="toggle-hint">Extra time after each sentence, in every mode. The two gap patterns already include 0.5 s.</div>
+            </div>
+
             <label class="toggle-row">
                 <div class="toggle-label">
                     <div class="toggle-title">Highlight current sentence</div>
@@ -425,7 +434,7 @@
         document.head.appendChild(xlsxFallback);
     }
 </script>
-<script src="app.js?v=37"></script>
+<script src="app.js?v=38"></script>
 
 </body>
 </html>

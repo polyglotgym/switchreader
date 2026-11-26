@@ -2,7 +2,7 @@
 //  SWITCHREADER — parallel-text lesson reader
 // ═══════════════════════════════════════════════════════════════
 
-const APP_BUILD = "2026-11-25c";   // shown at the bottom of Settings: tells you which build is running
+const APP_BUILD = "2026-11-25d";   // shown at the bottom of Settings: tells you which build is running
 let offlineStatusEl = null;        // the small "Offline ready" line under it
 
 // Some browsers have no text-to-speech at all. Remember that, and give the
@@ -522,6 +522,28 @@ gapSlider.addEventListener("input", function() {
     localStorage.setItem("gapSeconds", gapSeconds);
 });
 
+// Pause between sentences: extra waiting time after each sentence, in every
+// mode (Normal too). 0 means none, which keeps Normal exactly as it was.
+// For quizzes: question, pause, answer.
+const pauseSlider = document.getElementById("sentence-pause");
+const pauseValue = document.getElementById("sentence-pause-value");
+let sentencePauseSeconds = parseFloat(localStorage.getItem("sentencePause"));
+if (isNaN(sentencePauseSeconds)) sentencePauseSeconds = 0;
+sentencePauseSeconds = Math.min(10, Math.max(0, sentencePauseSeconds));
+
+function showSentencePause(value) {
+    sentencePauseSeconds = value;
+    pauseSlider.value = value;
+    pauseValue.textContent = value.toFixed(1) + " s";
+}
+
+showSentencePause(sentencePauseSeconds);
+
+pauseSlider.addEventListener("input", function() {
+    showSentencePause(parseFloat(pauseSlider.value));
+    localStorage.setItem("sentencePause", sentencePauseSeconds);
+});
+
 
 // ═══════════════════════════════════════════════════════════════
 //  EARBUD / HEADSET BUTTONS
@@ -800,6 +822,7 @@ document.getElementById("reset-settings-button").addEventListener("click", funct
     readingPatternSelect.value = "normal";
     readingPatternSelect.dispatchEvent(new Event("change"));
     setSlider(gapSlider, "3");
+    setSlider(pauseSlider, "0");
     setSwitch(document.getElementById("show-debug-log"), false);
     setSwitch(earbudCheckbox, false);
     earbudSkipSelect.value = "sentence";
@@ -818,7 +841,7 @@ document.getElementById("reset-settings-button").addEventListener("click", funct
         "blankModeEnabled", "followTogether", "showDebugLog",
         "perLanguageSettings", LANG_SETTINGS_KEY,
         "earbudButtons", "earbudSkipUnit",
-        "readingPattern", "gapSeconds"
+        "readingPattern", "gapSeconds", "sentencePause"
     ].forEach(function(key) { localStorage.removeItem(key); });
     Object.keys(localStorage)
         .filter(function(key) { return key.startsWith("ttsVoiceURI_"); })
@@ -2012,23 +2035,31 @@ function startTts() {
 // What gets spoken for one sentence, as a short list of steps.
 // Normal is always just the L2 text. A sentence with no L1 text is
 // simply read in Normal style, so there is never a pointless gap.
-// In the two gap patterns, a short fixed pause ends every sentence, so the
-// last point has a moment to sink in before the next one starts.
-const SENTENCE_PAUSE_SECONDS = 0.5;
+// In the two gap patterns, a short built-in pause ends every sentence, so the
+// last point has a moment to sink in before the next one starts. The
+// "Pause between sentences" slider is added on top of it, in every mode.
+const PATTERN_PAUSE_SECONDS = 0.5;
 
 function buildSpeechSteps(page, index) {
     const l2 = { kind: "l2", text: page.l2[index] };
-    if (readingPattern === "normal") return [l2];
+    const inPattern = (readingPattern !== "normal");
 
-    const pause = { kind: "gap", seconds: SENTENCE_PAUSE_SECONDS };
+    // Waiting time after the sentence. Normal with the slider at 0 has none.
+    const pauseSeconds = (inPattern ? PATTERN_PAUSE_SECONDS : 0) + sentencePauseSeconds;
+    function withPause(steps) {
+        if (pauseSeconds > 0) steps.push({ kind: "gap", seconds: pauseSeconds });
+        return steps;
+    }
+
+    if (!inPattern) return withPause([l2]);
+
+    // A sentence with no L1 text is read as L2 only, so there is no pointless gap.
     const l1Text = String((page.l1 || [])[index] ?? "").trim();
-    if (!l1Text) return [l2, pause];
+    if (!l1Text) return withPause([l2]);
 
     const l1 = { kind: "l1", text: l1Text };
     const gap = { kind: "gap", seconds: gapSeconds };
-    const steps = readingPattern === "l1-l2" ? [l1, gap, l2] : [l2, gap, l1, l2];
-    steps.push(pause);
-    return steps;
+    return withPause(readingPattern === "l1-l2" ? [l1, gap, l2] : [l2, gap, l1, l2]);
 }
 
 function speakNextSentence(attempt = 0, stepIndex = 0) {
