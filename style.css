@@ -247,6 +247,13 @@ body {
 #reading-text .hl-wo  { color: #4ade80; }   /* を  green    */
 #reading-text .hl-end { color: #ffee58; }   /* 。！？ lemon yellow, only in multi-sentence cells */
 
+/* Third view showing Russian in italics (Settings > Reading > Third view: Russian in italics).
+   The fonts listed have true Russian italic letter shapes; the phone's own serif font is the fallback. */
+#reading-text.russian-italic {
+    font-style: italic;
+    font-family: Georgia, "Noto Serif", "Times New Roman", serif;
+}
+
 /* TOP BAR */
 
 .top-bar {

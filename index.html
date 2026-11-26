@@ -15,7 +15,7 @@
     <meta name="apple-mobile-web-app-title" content="SwitchReader">
     <link rel="apple-touch-icon" href="apple-touch-icon.png">
 
-    <link rel="stylesheet" href="style.css?v=33">
+    <link rel="stylesheet" href="style.css?v=34">
 </head>
 <body>
 
@@ -173,6 +173,14 @@
         <div class="card-section">
             <h3 class="section-header">Reading</h3>
 
+            <label class="toggle-row">
+                <div class="toggle-label">
+                    <div class="toggle-title">Enable third mode</div>
+                    <div class="toggle-hint">Shows the third spreadsheet column (romanised text, notes). Blank where that column is empty.</div>
+                </div>
+                <input type="checkbox" id="third-mode-enabled" class="switch" checked>
+            </label>
+
             <div class="select-row">
                 <label for="reading-pattern" class="toggle-title">Reading pattern</label>
                 <select id="reading-pattern">
@@ -209,14 +217,6 @@
 
             <label class="toggle-row">
                 <div class="toggle-label">
-                    <div class="toggle-title">Colour Japanese particles</div>
-                    <div class="toggle-hint">Japanese text only: は amber, が blue, を green. Where a cell has more than one sentence, the sentence ends (。！？) are yellow.</div>
-                </div>
-                <input type="checkbox" id="japanese-highlight" class="switch">
-            </label>
-
-            <label class="toggle-row">
-                <div class="toggle-label">
                     <div class="toggle-title">Tapping a sentence starts speech</div>
                     <div class="toggle-hint">Off: taps move the highlight but don't start playback.</div>
                 </div>
@@ -249,18 +249,26 @@
 
             <label class="toggle-row">
                 <div class="toggle-label">
-                    <div class="toggle-title">Enable third mode</div>
-                    <div class="toggle-hint">Shows the third spreadsheet column (romanised text, notes). Blank where that column is empty.</div>
-                </div>
-                <input type="checkbox" id="third-mode-enabled" class="switch" checked>
-            </label>
-
-            <label class="toggle-row">
-                <div class="toggle-label">
                     <div class="toggle-title">Remember separate settings for each language</div>
                     <div class="toggle-hint">Speed, font size and line spacing are saved per language. Open a lesson to change them. The voice is always saved per language.</div>
                 </div>
                 <input type="checkbox" id="per-language-settings" class="switch">
+            </label>
+
+            <label class="toggle-row">
+                <div class="toggle-label">
+                    <div class="toggle-title">Colour Japanese particles</div>
+                    <div class="toggle-hint">Japanese text only: は amber, が blue, を green. Where a cell has more than one sentence, the sentence ends (。！？) are yellow.</div>
+                </div>
+                <input type="checkbox" id="japanese-highlight" class="switch">
+            </label>
+
+            <label class="toggle-row">
+                <div class="toggle-label">
+                    <div class="toggle-title">Third view: Russian in italics</div>
+                    <div class="toggle-hint">Russian lessons only (L2 is Russian). The third view shows the Russian text in italics, in place of the third spreadsheet column. Needs "Enable third mode" to be on.</div>
+                </div>
+                <input type="checkbox" id="russian-italics" class="switch">
             </label>
         </div>
 
@@ -442,7 +450,7 @@
         document.head.appendChild(xlsxFallback);
     }
 </script>
-<script src="app.js?v=39"></script>
+<script src="app.js?v=40"></script>
 
 </body>
 </html>

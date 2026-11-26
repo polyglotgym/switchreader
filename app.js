@@ -2,7 +2,7 @@
 //  SWITCHREADER — parallel-text lesson reader
 // ═══════════════════════════════════════════════════════════════
 
-const APP_BUILD = "2026-11-26a";   // shown at the bottom of Settings: tells you which build is running
+const APP_BUILD = "2026-11-26b";   // shown at the bottom of Settings: tells you which build is running
 let offlineStatusEl = null;        // the small "Offline ready" line under it
 
 // Some browsers have no text-to-speech at all. Remember that, and give the
@@ -533,6 +533,19 @@ function highlightJapanese(text) {
 }
 
 
+// Third view: Russian in italics. Off until the user switches it on.
+// For lessons whose second language (L2) is Russian, the third view shows a
+// copy of the Russian text in italics, in place of the third spreadsheet
+// column (which is ignored while this is on). Other languages are not affected.
+const russianItalicsCheckbox = document.getElementById("russian-italics");
+let russianItalicsEnabled = localStorage.getItem("russianItalics") === "true";
+russianItalicsCheckbox.checked = russianItalicsEnabled;
+russianItalicsCheckbox.addEventListener("change", function() {
+    russianItalicsEnabled = russianItalicsCheckbox.checked;
+    localStorage.setItem("russianItalics", russianItalicsEnabled);
+    if (!readerScreen.hidden) displayPage();
+});
+
 // Third mode (the optional third spreadsheet column: romanised text, notes).
 // An existing choice saved under its old name, "blankModeEnabled", carries over.
 const thirdModeCheckbox = document.getElementById("third-mode-enabled");
@@ -927,6 +940,7 @@ document.getElementById("reset-settings-button").addEventListener("click", funct
     setSlider(lineSpacingSlider, "150");
     setSwitch(ttsHighlightCheckbox, true);
     setSwitch(japaneseHighlightCheckbox, false);
+    setSwitch(russianItalicsCheckbox, false);
     setSwitch(tapStartsTtsCheckbox, false);
     setSwitch(continueTtsOnPageTurnCheckbox, false);
     setSwitch(autoNextLessonCheckbox, false);
@@ -956,7 +970,7 @@ document.getElementById("reset-settings-button").addEventListener("click", funct
         "perLanguageSettings", LANG_SETTINGS_KEY,
         "earbudButtons", "earbudSkipUnit",
         "readingPattern", "gapSeconds", "sentencePause",
-        "japaneseHighlight"
+        "japaneseHighlight", "russianItalics"
     ].forEach(function(key) { localStorage.removeItem(key); });
     Object.keys(localStorage)
         .filter(function(key) { return key.startsWith("ttsVoiceURI_"); })
@@ -1765,7 +1779,9 @@ function displayPage() {
 
     const page = pages[currentPage];
     const onEnd = !!page.isEnd;                       // the end card, not a page of text
-    const thirdHasText = !onEnd && (page.l3 || []).some(Boolean);
+    // Russian italics: a Russian lesson (L2 is Russian) with the option on.
+    const russianItalics = russianItalicsEnabled && !onEnd && /^ru(-|$)/i.test(currentBook?.l2Code || "");
+    const thirdHasText = !onEnd && (russianItalics ? page.l2 : (page.l3 || [])).some(Boolean);
 
     // Rebuilding the text (which happens whenever the highlight moves) would
     // normally snap a scrolled page back to the top. Note where we were, so
@@ -1797,16 +1813,18 @@ function displayPage() {
     const texts = onEnd ? []
         : displayMode === 1 ? page.l1
         : displayMode === 2 ? page.l2
-        : (thirdHasText ? page.l3 : []);
+        : (russianItalics ? page.l2 : (thirdHasText ? page.l3 : []));
 
     // Tell the browser which language this text is in, so it picks the right
     // letter shapes (this matters most for Japanese) and screen readers
     // pronounce it properly.
     const textLang = onEnd ? ""
                    : displayMode === 1 ? currentBook?.l1Code
-                   : displayMode === 2 ? currentBook?.l2Code : "";
+                   : displayMode === 2 ? currentBook?.l2Code
+                   : (russianItalics ? currentBook?.l2Code : "");
     if (textLang) readingArea.setAttribute("lang", textLang);
     else readingArea.removeAttribute("lang");
+    readingArea.classList.toggle("russian-italic", displayMode === 0 && russianItalics);
 
     // Colour the particles only for Japanese text (not the third mode, which has no language).
     const colourJapanese = japaneseHighlightEnabled && !onEnd && /^ja(-|$)/i.test(textLang || "");
