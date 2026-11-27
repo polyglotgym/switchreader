@@ -15,7 +15,7 @@
     <meta name="apple-mobile-web-app-title" content="SwitchReader">
     <link rel="apple-touch-icon" href="apple-touch-icon.png">
 
-    <link rel="stylesheet" href="style.css?v=35">
+    <link rel="stylesheet" href="style.css?v=36">
 </head>
 <body>
 
@@ -284,7 +284,7 @@
                 <label class="toggle-row">
                     <div class="toggle-label">
                         <div class="toggle-title">Friends (green)</div>
-                        <div class="toggle-hint">А К М О Т: look and sound like English.</div>
+                        <div class="toggle-hint">А К М Т: look and sound like English.</div>
                     </div>
                     <input type="checkbox" id="russian-colour-friends" class="switch" checked>
                 </label>
@@ -295,6 +295,14 @@
                         <div class="toggle-hint">В Н Р С У Х: look like English, sound different.</div>
                     </div>
                     <input type="checkbox" id="russian-colour-false" class="switch" checked>
+                </label>
+
+                <label class="toggle-row">
+                    <div class="toggle-label">
+                        <div class="toggle-title">Shifting vowels (violet)</div>
+                        <div class="toggle-hint">О: often sounds like "а" when it is not stressed. Е can join it (see below).</div>
+                    </div>
+                    <input type="checkbox" id="russian-colour-shifting" class="switch" checked>
                 </label>
 
                 <label class="toggle-row">
@@ -310,6 +318,7 @@
                     <select id="russian-colour-e">
                         <option value="friend">Friend (green)</option>
                         <option value="false">False friend (amber)</option>
+                        <option value="shifting">Shifting vowel (violet)</option>
                         <option value="none">Not coloured</option>
                     </select>
                 </div>
@@ -494,7 +503,7 @@
         document.head.appendChild(xlsxFallback);
     }
 </script>
-<script src="app.js?v=41"></script>
+<script src="app.js?v=42"></script>
 
 </body>
 </html>

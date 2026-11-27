@@ -2,7 +2,7 @@
 //  SWITCHREADER — parallel-text lesson reader
 // ═══════════════════════════════════════════════════════════════
 
-const APP_BUILD = "2026-11-27a";   // shown at the bottom of Settings: tells you which build is running
+const APP_BUILD = "2026-11-27b";   // shown at the bottom of Settings: tells you which build is running
 let offlineStatusEl = null;        // the small "Offline ready" line under it
 
 // Some browsers have no text-to-speech at all. Remember that, and give the
@@ -553,6 +553,7 @@ const russianColourCheckbox = document.getElementById("russian-colour");
 const russianColourOptions = document.getElementById("russian-colour-options");
 const russianFriendsCheckbox = document.getElementById("russian-colour-friends");
 const russianFalseCheckbox = document.getElementById("russian-colour-false");
+const russianShiftingCheckbox = document.getElementById("russian-colour-shifting");
 const russianSignsCheckbox = document.getElementById("russian-colour-signs");
 const russianESelect = document.getElementById("russian-colour-e");
 function savedRussianFlag(key, fallback) {
@@ -562,42 +563,53 @@ function savedRussianFlag(key, fallback) {
 let russianColourEnabled = savedRussianFlag("russianColour", false);
 let russianColourFriends = savedRussianFlag("russianColourFriends", true);
 let russianColourFalse = savedRussianFlag("russianColourFalse", true);
+let russianColourShifting = savedRussianFlag("russianColourShifting", true);
 let russianColourSigns = savedRussianFlag("russianColourSigns", true);
-let russianColourE = ["friend", "false", "none"].includes(localStorage.getItem("russianColourE"))
-    ? localStorage.getItem("russianColourE") : "friend";
+// Е starts in the "shifting vowels" group. (An earlier build saved Е as a friend
+// under the key "russianColourE"; that old copy is dropped so everyone starts
+// from the new default. The user can still move Е with the dropdown.)
+localStorage.removeItem("russianColourE");
+let russianColourE = ["friend", "false", "shifting", "none"].includes(localStorage.getItem("russianColourEGroup"))
+    ? localStorage.getItem("russianColourEGroup") : "shifting";
 russianColourCheckbox.checked = russianColourEnabled;
 russianColourOptions.hidden = !russianColourEnabled;
 russianFriendsCheckbox.checked = russianColourFriends;
 russianFalseCheckbox.checked = russianColourFalse;
+russianShiftingCheckbox.checked = russianColourShifting;
 russianSignsCheckbox.checked = russianColourSigns;
 russianESelect.value = russianColourE;
 function russianColourChanged() {
     russianColourEnabled = russianColourCheckbox.checked;
     russianColourFriends = russianFriendsCheckbox.checked;
     russianColourFalse = russianFalseCheckbox.checked;
+    russianColourShifting = russianShiftingCheckbox.checked;
     russianColourSigns = russianSignsCheckbox.checked;
     russianColourE = russianESelect.value;
     localStorage.setItem("russianColour", russianColourEnabled);
     localStorage.setItem("russianColourFriends", russianColourFriends);
     localStorage.setItem("russianColourFalse", russianColourFalse);
+    localStorage.setItem("russianColourShifting", russianColourShifting);
     localStorage.setItem("russianColourSigns", russianColourSigns);
-    localStorage.setItem("russianColourE", russianColourE);
+    localStorage.setItem("russianColourEGroup", russianColourE);
     russianColourOptions.hidden = !russianColourEnabled;
     if (!readerScreen.hidden) displayPage();
 }
-[russianColourCheckbox, russianFriendsCheckbox, russianFalseCheckbox, russianSignsCheckbox, russianESelect]
+[russianColourCheckbox, russianFriendsCheckbox, russianFalseCheckbox, russianShiftingCheckbox, russianSignsCheckbox, russianESelect]
     .forEach(function(control) { control.addEventListener("change", russianColourChanged); });
 
 // ── Russian letter colouring ──────────────────────────────────────
 // When "Colour Russian letters" is on in Settings, Russian text is shown with
 // the letters that look like English ones picked out by colour:
-//   friends       look AND sound like English  (green)
-//   false friends look like English, sound different (amber)
-//   signs         the hard and soft signs (blue)
+//   friends        look AND sound like English  (green)
+//   false friends  look like English, sound different (amber)
+//   shifting vowels О (and Е if chosen): the sound changes when the vowel
+//                  is not stressed, О towards "а" (violet)
+//   signs          the hard and soft signs (blue)
 // Everything else stays white. This changes how the text LOOKS only; the
 // spoken text is never touched. The colours themselves are in style.css.
-const RU_FRIENDS = "АКМОТакмот";
+const RU_FRIENDS = "АКМТакмт";
 const RU_FALSE_FRIENDS = "ВНРСУХвнрсух";
+const RU_SHIFTING = "Оо";
 const RU_SIGNS = "ЪЬъь";
 const RU_E = "Ее";                 // goes with whichever group the user picks in Settings
 
@@ -611,9 +623,11 @@ function russianGroup(ch, italicView) {
     if (italicView && RU_CHANGED_IN_ITALICS.includes(ch)) return "";
     if (RU_FRIENDS.includes(ch)) return russianColourFriends ? "fr" : "";
     if (RU_FALSE_FRIENDS.includes(ch)) return russianColourFalse ? "ff" : "";
+    if (RU_SHIFTING.includes(ch)) return russianColourShifting ? "sh" : "";
     if (RU_E.includes(ch)) {
         if (russianColourE === "friend") return russianColourFriends ? "fr" : "";
         if (russianColourE === "false") return russianColourFalse ? "ff" : "";
+        if (russianColourE === "shifting") return russianColourShifting ? "sh" : "";
     }
     return "";
 }
@@ -1037,8 +1051,9 @@ document.getElementById("reset-settings-button").addEventListener("click", funct
     setSwitch(russianColourCheckbox, false);
     setSwitch(russianFriendsCheckbox, true);
     setSwitch(russianFalseCheckbox, true);
+    setSwitch(russianShiftingCheckbox, true);
     setSwitch(russianSignsCheckbox, true);
-    russianESelect.value = "friend";
+    russianESelect.value = "shifting";
     russianESelect.dispatchEvent(new Event("change"));
     setSwitch(tapStartsTtsCheckbox, false);
     setSwitch(continueTtsOnPageTurnCheckbox, false);
@@ -1070,7 +1085,8 @@ document.getElementById("reset-settings-button").addEventListener("click", funct
         "earbudButtons", "earbudSkipUnit",
         "readingPattern", "gapSeconds", "sentencePause",
         "japaneseHighlight", "russianItalics", "russianColour",
-        "russianColourFriends", "russianColourFalse", "russianColourSigns", "russianColourE"
+        "russianColourFriends", "russianColourFalse", "russianColourShifting", "russianColourSigns",
+        "russianColourE", "russianColourEGroup"
     ].forEach(function(key) { localStorage.removeItem(key); });
     Object.keys(localStorage)
         .filter(function(key) { return key.startsWith("ttsVoiceURI_"); })

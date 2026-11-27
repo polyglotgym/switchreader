@@ -257,6 +257,7 @@ body {
 /* Russian letter colouring (Settings > Reading > Colour Russian letters) */
 #reading-text .ru-fr { color: #4ade80; }   /* friends: look and sound like English  (green) */
 #reading-text .ru-ff { color: #fbbf24; }   /* false friends: look English, sound different (amber) */
+#reading-text .ru-sh { color: #c084fc; }   /* shifting vowels: О (and Е if chosen) change sound when unstressed (violet) */
 #reading-text .ru-sg { color: #38bdf8; }   /* hard and soft signs (blue) */
 
 /* TOP BAR */
