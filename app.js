@@ -2,7 +2,7 @@
 //  SWITCHREADER — parallel-text lesson reader
 // ═══════════════════════════════════════════════════════════════
 
-const APP_BUILD = "2026-11-26b";   // shown at the bottom of Settings: tells you which build is running
+const APP_BUILD = "2026-11-27a";   // shown at the bottom of Settings: tells you which build is running
 let offlineStatusEl = null;        // the small "Offline ready" line under it
 
 // Some browsers have no text-to-speech at all. Remember that, and give the
@@ -546,6 +546,98 @@ russianItalicsCheckbox.addEventListener("change", function() {
     if (!readerScreen.hidden) displayPage();
 });
 
+// Colour Russian letters: off until the user switches it on. The switch opens
+// a small list where each group can be turned on or off. All groups start on.
+// The colouring function itself (highlightRussian) is just below.
+const russianColourCheckbox = document.getElementById("russian-colour");
+const russianColourOptions = document.getElementById("russian-colour-options");
+const russianFriendsCheckbox = document.getElementById("russian-colour-friends");
+const russianFalseCheckbox = document.getElementById("russian-colour-false");
+const russianSignsCheckbox = document.getElementById("russian-colour-signs");
+const russianESelect = document.getElementById("russian-colour-e");
+function savedRussianFlag(key, fallback) {
+    const saved = localStorage.getItem(key);
+    return saved === null ? fallback : saved === "true";
+}
+let russianColourEnabled = savedRussianFlag("russianColour", false);
+let russianColourFriends = savedRussianFlag("russianColourFriends", true);
+let russianColourFalse = savedRussianFlag("russianColourFalse", true);
+let russianColourSigns = savedRussianFlag("russianColourSigns", true);
+let russianColourE = ["friend", "false", "none"].includes(localStorage.getItem("russianColourE"))
+    ? localStorage.getItem("russianColourE") : "friend";
+russianColourCheckbox.checked = russianColourEnabled;
+russianColourOptions.hidden = !russianColourEnabled;
+russianFriendsCheckbox.checked = russianColourFriends;
+russianFalseCheckbox.checked = russianColourFalse;
+russianSignsCheckbox.checked = russianColourSigns;
+russianESelect.value = russianColourE;
+function russianColourChanged() {
+    russianColourEnabled = russianColourCheckbox.checked;
+    russianColourFriends = russianFriendsCheckbox.checked;
+    russianColourFalse = russianFalseCheckbox.checked;
+    russianColourSigns = russianSignsCheckbox.checked;
+    russianColourE = russianESelect.value;
+    localStorage.setItem("russianColour", russianColourEnabled);
+    localStorage.setItem("russianColourFriends", russianColourFriends);
+    localStorage.setItem("russianColourFalse", russianColourFalse);
+    localStorage.setItem("russianColourSigns", russianColourSigns);
+    localStorage.setItem("russianColourE", russianColourE);
+    russianColourOptions.hidden = !russianColourEnabled;
+    if (!readerScreen.hidden) displayPage();
+}
+[russianColourCheckbox, russianFriendsCheckbox, russianFalseCheckbox, russianSignsCheckbox, russianESelect]
+    .forEach(function(control) { control.addEventListener("change", russianColourChanged); });
+
+// ── Russian letter colouring ──────────────────────────────────────
+// When "Colour Russian letters" is on in Settings, Russian text is shown with
+// the letters that look like English ones picked out by colour:
+//   friends       look AND sound like English  (green)
+//   false friends look like English, sound different (amber)
+//   signs         the hard and soft signs (blue)
+// Everything else stays white. This changes how the text LOOKS only; the
+// spoken text is never touched. The colours themselves are in style.css.
+const RU_FRIENDS = "АКМОТакмот";
+const RU_FALSE_FRIENDS = "ВНРСУХвнрсух";
+const RU_SIGNS = "ЪЬъь";
+const RU_E = "Ее";                 // goes with whichever group the user picks in Settings
+
+// In the italic third view some lowercase letters change shape and stop
+// looking like their English twin (т turns into something like an m).
+// Those are left white there.
+const RU_CHANGED_IN_ITALICS = "т";
+
+function russianGroup(ch, italicView) {
+    if (RU_SIGNS.includes(ch)) return russianColourSigns ? "sg" : "";
+    if (italicView && RU_CHANGED_IN_ITALICS.includes(ch)) return "";
+    if (RU_FRIENDS.includes(ch)) return russianColourFriends ? "fr" : "";
+    if (RU_FALSE_FRIENDS.includes(ch)) return russianColourFalse ? "ff" : "";
+    if (RU_E.includes(ch)) {
+        if (russianColourE === "friend") return russianColourFriends ? "fr" : "";
+        if (russianColourE === "false") return russianColourFalse ? "ff" : "";
+    }
+    return "";
+}
+
+function highlightRussian(text, italicView) {
+    let html = "";
+    let run = "";
+    let runClass = "";
+    function flush() {
+        if (!run) return;
+        html += runClass ? '<span class="ru-' + runClass + '">' + escapeHtml(run) + "</span>" : escapeHtml(run);
+        run = "";
+    }
+    for (let i = 0; i < text.length; i++) {
+        const ch = text.charAt(i);
+        const cls = russianGroup(ch, italicView);
+        if (cls !== runClass) { flush(); runClass = cls; }     // same-colour letters share one tag
+        run += ch;
+    }
+    flush();
+    return html;
+}
+
+
 // Third mode (the optional third spreadsheet column: romanised text, notes).
 // An existing choice saved under its old name, "blankModeEnabled", carries over.
 const thirdModeCheckbox = document.getElementById("third-mode-enabled");
@@ -609,13 +701,14 @@ followTogetherCheckbox.addEventListener("change", function() {
 // Reading pattern: what is spoken for each sentence.
 //   normal   = the L2 sentence only (the way the app has always worked)
 //   l1-l2    = L1, a gap for you to say it aloud, then L2
+//   l2-l1    = L2, a gap, then L1
 //   l2-l1-l2 = L2, a gap, then L1, then L2 again
-// One setting for the whole app. "Gap length" only matters for the last two.
+// One setting for the whole app. "Gap length" only matters for the last three.
 const readingPatternSelect = document.getElementById("reading-pattern");
 const gapRow = document.getElementById("gap-row");
 const gapSlider = document.getElementById("gap-seconds");
 const gapValue = document.getElementById("gap-seconds-value");
-const READING_PATTERNS = ["normal", "l1-l2", "l2-l1-l2"];
+const READING_PATTERNS = ["normal", "l1-l2", "l2-l1", "l2-l1-l2"];
 let readingPattern = READING_PATTERNS.includes(localStorage.getItem("readingPattern"))
     ? localStorage.getItem("readingPattern") : "normal";
 let gapSeconds = parseFloat(localStorage.getItem("gapSeconds"));
@@ -941,6 +1034,12 @@ document.getElementById("reset-settings-button").addEventListener("click", funct
     setSwitch(ttsHighlightCheckbox, true);
     setSwitch(japaneseHighlightCheckbox, false);
     setSwitch(russianItalicsCheckbox, false);
+    setSwitch(russianColourCheckbox, false);
+    setSwitch(russianFriendsCheckbox, true);
+    setSwitch(russianFalseCheckbox, true);
+    setSwitch(russianSignsCheckbox, true);
+    russianESelect.value = "friend";
+    russianESelect.dispatchEvent(new Event("change"));
     setSwitch(tapStartsTtsCheckbox, false);
     setSwitch(continueTtsOnPageTurnCheckbox, false);
     setSwitch(autoNextLessonCheckbox, false);
@@ -970,7 +1069,8 @@ document.getElementById("reset-settings-button").addEventListener("click", funct
         "perLanguageSettings", LANG_SETTINGS_KEY,
         "earbudButtons", "earbudSkipUnit",
         "readingPattern", "gapSeconds", "sentencePause",
-        "japaneseHighlight", "russianItalics"
+        "japaneseHighlight", "russianItalics", "russianColour",
+        "russianColourFriends", "russianColourFalse", "russianColourSigns", "russianColourE"
     ].forEach(function(key) { localStorage.removeItem(key); });
     Object.keys(localStorage)
         .filter(function(key) { return key.startsWith("ttsVoiceURI_"); })
@@ -1829,13 +1929,20 @@ function displayPage() {
     // Colour the particles only for Japanese text (not the third mode, which has no language).
     const colourJapanese = japaneseHighlightEnabled && !onEnd && /^ja(-|$)/i.test(textLang || "");
 
+    // Colour the Russian letters only for Russian text. In the italic third view
+    // a few letters change shape, so that view is told (italicView).
+    const colourRussian = russianColourEnabled && !onEnd && /^ru(-|$)/i.test(textLang || "");
+    const italicView = displayMode === 0 && russianItalics;
+
     readingArea.innerHTML = onEnd ? buildEndCardHtml() : texts.map((sentence, index) => {
         const highlight =
             ttsHighlightEnabled && texts.length > 1 && index === currentSentenceIndex
                 ? ' class="tts-current-sentence"'
                 : '';
         // In the third mode, an empty cell still keeps its line so the rest stays lined up.
-        const shown = (colourJapanese ? highlightJapanese(sentence) : escapeHtml(sentence))
+        const shown = (colourJapanese ? highlightJapanese(sentence)
+                      : colourRussian ? highlightRussian(sentence, italicView)
+                      : escapeHtml(sentence))
             || (displayMode === 0 ? "&nbsp;" : "");
         return `<p${highlight}>${shown}</p>`;
     }).join("");
@@ -2196,7 +2303,10 @@ function buildSpeechSteps(page, index) {
 
     const l1 = { kind: "l1", text: l1Text };
     const gap = { kind: "gap", seconds: gapSeconds };
-    return withPause(readingPattern === "l1-l2" ? [l1, gap, l2] : [l2, gap, l1, l2]);
+    const steps = readingPattern === "l1-l2" ? [l1, gap, l2]
+                : readingPattern === "l2-l1" ? [l2, gap, l1]
+                : [l2, gap, l1, l2];
+    return withPause(steps);
 }
 
 function speakNextSentence(attempt = 0, stepIndex = 0) {

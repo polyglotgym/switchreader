@@ -2,7 +2,7 @@
 // opens without internet. Change BUILD on every release (it must match
 // APP_BUILD in app.js). A changed sw.js is what makes the phone fetch the update.
 
-const BUILD = "2026-11-26b";
+const BUILD = "2026-11-27a";
 const CACHE = "switchreader-" + BUILD;
 
 // Without these the app cannot run, so if any fail, this version is not installed.
