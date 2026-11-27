@@ -2,7 +2,7 @@
 //  SWITCHREADER — parallel-text lesson reader
 // ═══════════════════════════════════════════════════════════════
 
-const APP_BUILD = "2026-11-27b";   // shown at the bottom of Settings: tells you which build is running
+const APP_BUILD = "2026-11-27c";   // shown at the bottom of Settings: tells you which build is running
 let offlineStatusEl = null;        // the small "Offline ready" line under it
 
 // Some browsers have no text-to-speech at all. Remember that, and give the
@@ -714,15 +714,17 @@ followTogetherCheckbox.addEventListener("change", function() {
 
 // Reading pattern: what is spoken for each sentence.
 //   normal   = the L2 sentence only (the way the app has always worked)
+//   l1-only  = the L1 sentence only (no gap)
 //   l1-l2    = L1, a gap for you to say it aloud, then L2
 //   l2-l1    = L2, a gap, then L1
 //   l2-l1-l2 = L2, a gap, then L1, then L2 again
-// One setting for the whole app. "Gap length" only matters for the last three.
+//   l1-l2-l1 = L1, a gap, then L2, then L1 again
+// One setting for the whole app. "Gap length" only matters for the patterns with a gap.
 const readingPatternSelect = document.getElementById("reading-pattern");
 const gapRow = document.getElementById("gap-row");
 const gapSlider = document.getElementById("gap-seconds");
 const gapValue = document.getElementById("gap-seconds-value");
-const READING_PATTERNS = ["normal", "l1-l2", "l2-l1", "l2-l1-l2"];
+const READING_PATTERNS = ["normal", "l1-only", "l1-l2", "l2-l1", "l2-l1-l2", "l1-l2-l1"];
 let readingPattern = READING_PATTERNS.includes(localStorage.getItem("readingPattern"))
     ? localStorage.getItem("readingPattern") : "normal";
 let gapSeconds = parseFloat(localStorage.getItem("gapSeconds"));
@@ -737,7 +739,7 @@ function showGap(value) {
 
 function showPatternSettings() {
     readingPatternSelect.value = readingPattern;
-    gapRow.hidden = (readingPattern === "normal");   // nothing to set for Normal
+    gapRow.hidden = (readingPattern === "normal" || readingPattern === "l1-only");   // no gap in these two
 }
 
 showGap(gapSeconds);
@@ -2293,34 +2295,39 @@ function startTts() {
 }
 
 // What gets spoken for one sentence, as a short list of steps.
-// Normal is always just the L2 text. A sentence with no L1 text is
-// simply read in Normal style, so there is never a pointless gap.
-// In the two gap patterns, a short built-in pause ends every sentence, so the
-// last point has a moment to sink in before the next one starts. The
+// Normal is always just the L2 text. "L1 only" is just the L1 text. A sentence
+// with no L1 text is read as L2 only, so there is never a pointless gap (and
+// "L1 only" never goes silent).
+// In the patterns with a gap, a short built-in pause ends every sentence, so
+// the last point has a moment to sink in before the next one starts. The
 // "Pause between sentences" slider is added on top of it, in every mode.
 const PATTERN_PAUSE_SECONDS = 0.5;
 
 function buildSpeechSteps(page, index) {
     const l2 = { kind: "l2", text: page.l2[index] };
-    const inPattern = (readingPattern !== "normal");
+    const l1Text = String((page.l1 || [])[index] ?? "").trim();
+    const l1 = { kind: "l1", text: l1Text };
+
+    // "L1 only" has no gap, so it behaves like Normal (no built-in pause).
+    const hasGap = (readingPattern !== "normal" && readingPattern !== "l1-only");
 
     // Waiting time after the sentence. Normal with the slider at 0 has none.
-    const pauseSeconds = (inPattern ? PATTERN_PAUSE_SECONDS : 0) + sentencePauseSeconds;
+    const pauseSeconds = (hasGap ? PATTERN_PAUSE_SECONDS : 0) + sentencePauseSeconds;
     function withPause(steps) {
         if (pauseSeconds > 0) steps.push({ kind: "gap", seconds: pauseSeconds });
         return steps;
     }
 
-    if (!inPattern) return withPause([l2]);
+    if (readingPattern === "normal") return withPause([l2]);
+    if (readingPattern === "l1-only") return withPause([l1Text ? l1 : l2]);
 
     // A sentence with no L1 text is read as L2 only, so there is no pointless gap.
-    const l1Text = String((page.l1 || [])[index] ?? "").trim();
     if (!l1Text) return withPause([l2]);
 
-    const l1 = { kind: "l1", text: l1Text };
     const gap = { kind: "gap", seconds: gapSeconds };
     const steps = readingPattern === "l1-l2" ? [l1, gap, l2]
                 : readingPattern === "l2-l1" ? [l2, gap, l1]
+                : readingPattern === "l1-l2-l1" ? [l1, gap, l2, l1]
                 : [l2, gap, l1, l2];
     return withPause(steps);
 }
