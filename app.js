@@ -2,7 +2,7 @@
 //  SWITCHREADER — parallel-text lesson reader
 // ═══════════════════════════════════════════════════════════════
 
-const APP_BUILD = "2026-11-27c";   // shown at the bottom of Settings: tells you which build is running
+const APP_BUILD = "2026-11-27d";   // shown at the bottom of Settings: tells you which build is running
 let offlineStatusEl = null;        // the small "Offline ready" line under it
 
 // Some browsers have no text-to-speech at all. Remember that, and give the
@@ -1987,7 +1987,7 @@ function displayPage() {
 
     const l1Short = (currentBook?.l1Code || "").split("-")[0].toUpperCase();
     const l2Short = (currentBook?.l2Code || "").split("-")[0].toUpperCase();
-    const modeLabels = ["Aa", l1Short, l2Short];   // Aa = third mode
+    const modeLabels = ["3", l1Short, l2Short];   // 3 = third mode
 
     modeLabel.textContent = modeLabels[displayMode] || "";
     modeLabel.classList.toggle("blank", displayMode === 0 && !thirdHasText);   // dim when there is nothing to show
@@ -2632,6 +2632,7 @@ function buildEndCardHtml() {
     let html = '<div class="end-card">' +
         '<div class="end-title">End of lesson</div>' +
         '<div class="end-lesson">' + escapeHtml(lesson ? lesson.title : "") + '</div>' +
+        '<button type="button" class="primary-button" data-end-action="home">Home</button>' +
         '<button type="button" class="primary-button" data-end-action="restart">Back to start</button>';
 
     if (next) {
@@ -2670,7 +2671,9 @@ function finishLessonSpeech() {
 readingArea.addEventListener("click", function(event) {
     const button = event.target.closest("[data-end-action]");
     if (!button) return;
-    if (button.dataset.endAction === "restart") {
+    if (button.dataset.endAction === "home") {
+        homeButton.click();                 // the same as the Home button in the top corner
+    } else if (button.dataset.endAction === "restart") {
         goToStart();
     } else if (button.dataset.endAction === "next") {
         const next = findNextLesson();

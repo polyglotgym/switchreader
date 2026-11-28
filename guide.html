@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SwitchReader user guide</title>
+<!--
+  HOW TO EDIT THIS GUIDE
+  ----------------------
+  The words of the guide are in the block near the bottom of this file, between
+  the lines  BEGIN GUIDE TEXT  and  END GUIDE TEXT. Edit them as plain text in
+  any editor (VS Code, Notepad, or paste them into Word and back as plain text).
+  The page formats itself when you open it in a browser. Nothing else needs to
+  change.
+
+  Formatting cheat sheet:
+    # Title                 the page title (use once, at the top)
+    ## Section heading      a main section (these make the contents list)
+    ### Smaller heading     a step or sub-section
+    **bold**   *italic*   `code`   [link text](https://address)
+    - item                  a bullet list      1. item   a numbered list
+    > text                  a highlighted tip or note
+    | A | B |               a table (second line: | --- | --- |)
+    ``` on its own line     starts and ends a block with a Copy button
+    ![description](pic.png) a picture (put the file next to this one)
+    {{note to self}}        a yellow reminder, easy to find with search
+    [[contents]]            where the contents list appears
+-->
+<style>
+:root {
+    --bg: #000;
+    --fg: #e9e9e9;
+    --muted: #9b9b9b;
+    --rule: #2a2a2a;
+    --link: #38bdf8;
+    --tip: #38bdf8;
+    --code-bg: #141414;
+    --todo-bg: #fbbf24;
+    --todo-fg: #1a1400;
+}
+@media (prefers-color-scheme: light) {
+    :root {
+        --bg: #fff;
+        --fg: #1b1b1b;
+        --muted: #5f5f5f;
+        --rule: #dcdcdc;
+        --link: #0369a1;
+        --tip: #0369a1;
+        --code-bg: #f2f2f2;
+    }
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; scroll-padding-top: 16px; }
+body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 18px;
+    line-height: 1.7;
+}
+main {
+    max-width: 38rem;
+    margin: 0 auto;
+    padding: 28px 20px 80px;
+}
+h1, h2, h3 { line-height: 1.25; font-weight: bold; }
+h1 { font-size: 2rem; margin: 0 0 0.4em; }
+h2 { font-size: 1.5rem; margin: 2.6em 0 0.7em; padding-top: 1.1em; border-top: 1px solid var(--rule); }
+h3 { font-size: 1.15rem; margin: 1.9em 0 0.5em; }
+p { margin: 0 0 1em; }
+a { color: var(--link); }
+a:focus-visible, button:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
+ul, ol { margin: 0 0 1em; padding-left: 1.4em; }
+li { margin: 0 0 0.45em; }
+li > ul, li > ol { margin-top: 0.45em; }
+strong { font-weight: bold; }
+hr { border: 0; border-top: 1px solid var(--rule); margin: 2em 0; }
+img { max-width: 100%; height: auto; border-radius: 6px; }
+blockquote {
+    margin: 1.2em 0;
+    padding: 0.1em 0 0.1em 1em;
+    border-left: 3px solid var(--tip);
+}
+blockquote p:last-child { margin-bottom: 0; }
+code {
+    font-family: ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+    font-size: 0.86em;
+    background: var(--code-bg);
+    padding: 0.1em 0.35em;
+    border-radius: 4px;
+}
+.code { position: relative; margin: 1.2em 0; }
+.code pre {
+    margin: 0;
+    padding: 2.4em 1em 1em;
+    background: var(--code-bg);
+    border-radius: 6px;
+    overflow-x: auto;
+    white-space: pre-wrap;
+}
+.code pre code { background: none; padding: 0; font-size: 0.82em; line-height: 1.55; }
+.copy {
+    position: absolute; top: 8px; right: 8px;
+    font: inherit; font-size: 0.78rem;
+    color: var(--fg); background: transparent;
+    border: 1px solid var(--rule); border-radius: 4px;
+    padding: 2px 10px; cursor: pointer;
+}
+.table-wrap { overflow-x: auto; margin: 1.2em 0; }
+table { border-collapse: collapse; width: 100%; font-size: 0.95em; }
+th, td { text-align: left; padding: 0.5em 0.8em 0.5em 0; border-bottom: 1px solid var(--rule); vertical-align: top; }
+th { font-weight: bold; }
+mark.todo { background: var(--todo-bg); color: var(--todo-fg); padding: 0 0.3em; border-radius: 3px; }
+nav.contents { margin: 1.6em 0 0; }
+nav.contents ul { list-style: none; padding: 0; margin: 0; }
+nav.contents li { margin: 0 0 0.35em; }
+.back { margin-top: 3em; font-size: 0.9rem; }
+@media print {
+    :root { --bg: #fff; --fg: #000; --muted: #444; --rule: #bbb; --link: #000; --tip: #444; --code-bg: #f2f2f2; }
+    body { font-size: 12pt; }
+    .copy, .back { display: none; }
+    h2, h3 { break-after: avoid; }
+    blockquote, .code, table, img { break-inside: avoid; }
+    a { text-decoration: none; }
+}
+</style>
+</head>
+<body>
+<main id="guide"><noscript><p>This guide needs JavaScript to display. Please turn it on in your browser.</p></noscript></main>
+
+<!-- BEGIN GUIDE TEXT -->
+<script type="text/markdown" id="guide-source">
+# SwitchReader user guide
+
+*Written for the build number shown at the bottom of the app's Settings screen. Read the Quick start first, then dip into the rest when you need it.*
+
+[[contents]]
+
+## 1. What SwitchReader is
+
+SwitchReader is a flexible reader for learning languages, and for anything else you want to read, hear, repeat or be quizzed on. Every lesson is a simple spreadsheet. Each row holds one sentence (or short passage) in two languages, and the app lets you read it, hear it, and flip between the languages with a swipe.
+
+People use it as:
+
+- an **audiobook with subtitles**: read along in the language you are learning, with the translation one swipe away;
+- a **listen-and-repeat trainer**: hear a sentence in your own language, say it aloud in the pause, then hear the answer;
+- a **quiz machine**: a question on one row, the answer on the next, with a pause in between;
+- a way to learn **anything that comes in short lines**, from poetry to exam revision (see section 5).
+
+### How it differs from a regular e-reader
+
+- **Lessons are spreadsheets, not books.** There is no special book format. If you can make a table with two columns, you can make a lesson, and you decide exactly what each line says.
+- **Two languages in one place.** You switch between the language you are learning and your own with a swipe, without losing your place. An optional third view can show romanisation, notes or anything else you like.
+- **It reads to you, your way.** The app uses your phone's built-in voices, and it can follow patterns such as "my language, a gap for you to say it, then the answer".
+- **Colour helps you notice.** Optional colouring picks out Japanese particles, and Russian letters that look like English ones.
+- **Simple and private.** There is no account to create. Your lessons stay on your phone, and the app works without internet once it has loaded.
+
+> **Words used in this guide.** **L2** is the language you are learning (the "original" text). **L1** is your own language (the translation). A **row** is one line of your spreadsheet, shown as one sentence in the app. **Third mode** is the optional third view.
+
+## 2. Quick start
+
+Five steps from nothing to reading. It takes about ten minutes.
+
+### Step 1. Open the app and install it
+
+1. On your Android phone, open **Google Chrome** and go to {{APP ADDRESS}}.
+2. Tap the three dots at the top right, then **Install app**. (On some versions the wording is **Add to Home screen**.) SwitchReader now sits on your home screen like any other app and opens full-screen.
+3. Open it once while you are online. At the bottom of Settings (the gear icon) a line should say **Offline ready**. If it says "almost ready", close the app and open it again once.
+
+> **Which phones?** SwitchReader has been built and tested on Android phones using Chrome. It may work in other browsers and on other devices, but that has not been tested.
+
+### Step 2. Make two one-time changes to your phone
+
+These two small changes avoid the most common frustrations.
+
+**A. Stop the pop-up box when you touch the reading screen.** On some phones, Chrome shows a box every time you press the reading screen, which gets in the way of tapping sentences. {{AUTHOR: add the exact steps and menu names here. Your note: turn on Google text selection in Chrome.}}
+
+**B. Lengthen your screen timeout.** Speech stops when the phone's screen turns off. This is a rule of the phone's browser, and the app cannot override it. So reading also stops if you press the power button or close a flip case.
+
+Set the timeout to **10 minutes** (look for Settings, then Display, then Screen timeout; the wording varies by phone). With that, speech carries on for up to ten minutes after you last touch the screen.
+
+> **The trade-off.** A longer timeout means the screen stays lit for longer whenever you leave the phone alone, which uses more battery. Turning the brightness down while you listen helps. You can set the timeout back to normal whenever you are not using the app for long listening.
+
+### Step 3. Make a three-line test lesson
+
+In Google Sheets (or Excel), type this into the first three rows. Column A is your own language, column B is the language you are learning, and column C is left empty for now.
+
+| Column A | Column B | Column C |
+| --- | --- | --- |
+| Good morning. | Buenos días. | |
+| How are you? | ¿Cómo estás? | |
+| Thank you very much. | Muchas gracias. | |
+
+There is no need for a header row. Save the sheet as a file: in Google Sheets choose File, then Download, then **Comma Separated Values (.csv)** or **Microsoft Excel (.xlsx)**. If you made it on a computer, get the file onto your phone by emailing it to yourself or putting it in Google Drive.
+
+### Step 4. Import it
+
+1. On the home screen, tap **Add lesson**.
+2. Set **Original language (L2)** to Spanish, and **Translation language (L1)** to English.
+3. Type a title if you like. If you leave it empty, the file name is used.
+4. Tap **Choose file** and pick your file, then tap **Import lesson**.
+
+The lesson now appears on the home screen, grouped under its language.
+
+### Step 5. Read and listen
+
+Tap the lesson to open it. You will see the Spanish. Press the play button at the bottom to hear it. A few things to try straight away:
+
+- **Swipe up or down** to change between your language and the language you are learning. (The third view joins in once you switch on **Enable third mode** in Settings.)
+- **Swipe left or right** to turn the page.
+- **Tap a sentence** to choose it.
+
+Section 4 explains the whole screen.
+
+## 3. Making your own lessons
+
+You will get the most out of SwitchReader by making lessons from what you are actually studying: your coursebook, your tutor's corrections, the news article you want to understand, the phrases you keep forgetting.
+
+### The spreadsheet format
+
+- **Column A** holds your own language (L1, the translation).
+- **Column B** holds the language you are learning (L2, the original).
+- **Column C** is optional. It feeds the third view, which is handy for romanisation (a pronunciation guide in Latin letters), notes, or hints.
+- **One row is one sentence.** Keep each row to something you will want to hear in one go: a sentence, a phrase, a question, or a short paragraph.
+- A **header row is optional.** If the first row says "L1" and "L2", or the two language names (for example "English" and "Spanish"), the app skips it. Otherwise the first row is read as lesson text.
+- Only the **first sheet** is read. Empty rows are skipped, and any columns after C are ignored.
+- The file can be **.xlsx, .xls or .csv**.
+
+You choose the languages when you import the file, not inside the spreadsheet. The same layout therefore works for every language. At the moment the choices are Spanish, English (UK or US), Italian, Russian, Japanese, French, and Portuguese (European or Brazilian).
+
+If letters look scrambled after importing a CSV file, save it again as **CSV UTF-8**, or use an .xlsx file instead.
+
+### Rows do not have to be translations
+
+Columns A and B are lined up row by row, but they do not have to mean the same thing. For a quiz, column A can hold a question and column B the answer:
+
+| Column A | Column B |
+| --- | --- |
+| How do you say "the bill, please" in Russian? | Счёт, пожалуйста. |
+| How do you say "I would like a coffee" in Russian? | Я хотел бы кофе. |
+
+Section 5 shows how to use this with the reading patterns.
+
+### Ways to get your material
+
+**1. Ask an AI to write the lesson.** Paste something like this into an AI chat, filling in the square brackets:
+
+```
+Make a table for a language lesson with two columns and 40 rows.
+Column A: a natural English sentence.
+Column B: the same sentence in [Spanish].
+Topic: [ordering food in a restaurant]. Level: [beginner].
+Keep each sentence short and useful in real life.
+Return only the table, so I can paste it into a spreadsheet.
+```
+
+For a third column, add: *"Add a column C with the pronunciation written in English letters."*
+
+**2. Use Google Translate inside Google Sheets.** Type your sentences in column A. In cell B1 type `=GOOGLETRANSLATE(A1,"en","es")` (swap "es" for the language code you want: ru, ja, fr, it or pt) and drag the formula down. Then copy column B and paste it back with **Paste special, Values only**, so that the translations become ordinary text before you download the file.
+
+**3. Type or copy your own material.** Sentences from a coursebook, vocabulary lists, lines from a script or a song you are learning (check that you are allowed to copy it), notes from lessons with a tutor.
+
+> **Always check the result.** AI and machine translation make mistakes, and they can sound stiff. Read through each lesson before you study from it, and check anything doubtful in a dictionary or with a native speaker.
+
+### Fixing, renaming and deleting lessons
+
+In the app you can rename or delete a lesson, but not edit its text. To correct a lesson, fix the spreadsheet, import it again, and delete the old copy.
+
+### Where your lessons are stored
+
+Lessons are saved in your phone's browser storage, so nothing is uploaded anywhere. All your lessons share a few megabytes of space, which is plenty for many short lessons. If the space fills up, the app tells you and asks you to delete a lesson first.
+
+> **Keep your spreadsheets.** If you ever clear Chrome's stored data for the app, your lessons go with it. The original spreadsheets are your backup.
+
+## 4. The home screen and the reading screen
+
+### The home screen
+
+{{SCREENSHOT: the home screen with a few lessons}}
+
+From top to bottom:
+
+- **The gear** at the top right opens Settings.
+- **Continue reading.** If you have a lesson in progress, a card at the top shows the one you read most recently. One tap takes you back to your place. The numbers show the sentence you are on, out of the total.
+- **Language buttons.** *All* shows every lesson, and there is a button for each language you have lessons in. The button with the sliders icon opens **Languages to show**, where you can hide languages you are not working on right now. Hidden languages stay in your library. They just don't appear on this screen.
+- **Your lessons**, grouped under their language, in the order you imported them. Each card shows the title, the two languages (for example Spanish → English) and your progress: **Not started**, a count such as **12 / 40 · 30%**, or **Done**. A tick means you have finished the lesson before. **Next up** marks the first lesson you have not started, once you have begun another lesson in that language.
+- **The options button on each card** opens **Lesson options**, where you can rename or delete the lesson.
+- **Add lesson** at the bottom, which is how you bring in a new spreadsheet (see sections 2 and 3).
+
+The app remembers where you stopped in every lesson, including which view you were using, so you can leave and come back at any time.
+
+> **Tip: import chapters in order.** Lessons are listed in the order you imported them, and "Next lesson" follows that order. If your course has chapters, import chapter 1 first.
+
+### The reading screen
+
+{{SCREENSHOT: the reading screen, with the bottom bar visible}}
+
+**The top bar** has a Home button, which takes you back to the lesson list, and the gear for Settings. The phone's Back button also takes you home from a lesson. On the home screen it does not close the app.
+
+**The bottom bar** has three controls:
+
+- **Page number** (left), for example "3 / 12". Tap it to open **Go to page**, where you can type a number, step with the arrows, or jump to the start or the end. On the last screen it says "End".
+- **Play** (middle). It turns into **Stop** while the app is speaking, and into **Continue** after you stop, so you can carry on from the same sentence.
+- **View button** (right). It shows which view you are looking at: the code of your own language (for example EN), the code of the language you are learning (for example ES), or **3** for the third view. Tap it to move to the next view. It looks dimmed in the third view when the lesson has nothing to show there.
+
+**Three views.** A lesson can be shown in your own language (L1), in the language you are learning (L2), or as the third view, which shows the third spreadsheet column. The third view only appears once you switch on **Enable third mode** in Settings. The order is L1, then L2, then the third view, then back round again.
+
+What you see is separate from what you hear. The voice follows the reading pattern (section 5), whichever view is on screen.
+
+**Swiping and tapping**
+
+| Do this | What happens |
+| --- | --- |
+| Swipe left | Next page |
+| Swipe right | Previous page |
+| Swipe up | Next view |
+| Swipe down | Previous view |
+| Tap a sentence | Choose that sentence (see below) |
+
+The reading screen does not scroll by dragging, because dragging is used for turning pages and changing views. If a page has more text than fits, small arrow buttons appear so you can scroll it, and it also scrolls by itself while the app is speaking.
+
+**Tapping a sentence.** By default, a tap moves the highlight to that sentence. If the app is speaking, it carries on reading from there. If you switch on **Tapping a sentence starts speech** in Settings, a tap starts speech from that sentence, and a tap on the sentence being read stops it.
+
+**The end of a lesson.** After the last page you see an **End of lesson** card, with **Home**, **Back to start** and, if there is one, **Next lesson** and its title. If you would rather the app rolled straight on into the next lesson, switch on **Speech continues into the next lesson** in Settings.
+
+> **On a computer.** The app also works with a keyboard. Space plays and stops, **C** changes the view, the left and right arrows turn pages, and the up and down arrows move between sentences.
+
+## 5. Ways to use it
+
+SwitchReader has one idea behind everything. A lesson is a list of rows, and the **reading pattern** decides which column the voice reads, in what order, and where it stays silent. Change the pattern, and the same lesson becomes a different exercise.
+
+### How the patterns work
+
+Choose the pattern in Settings, under Reading. It applies to every lesson.
+
+| Pattern | What you hear | Good for |
+| --- | --- | --- |
+| Normal: L2 only | The language you are learning | Listening, audiobook-style reading, repeating after the voice |
+| L1 only | Your own language (the first column) | Lessons where both columns are languages you know or are studying (see "Recipe: three-language lessons") |
+| L1, gap, L2 | Your language, a silent gap, then the language you are learning | Quizzes and speaking practice: question, your answer, the model answer |
+| L2, gap, L1 | The language you are learning, a gap, then your language | Checking you understood: hear it, think what it means, then hear the meaning |
+| L2, gap, L1, L2 | The language you are learning, a gap, your language, then the language you are learning again | Hear it, understand it, hear it once more |
+| L1, gap, L2, L1 | Your language, a gap, the language you are learning, then your language again | Like L1, gap, L2, with the meaning repeated at the end |
+
+Two sliders shape the timing:
+
+- **Gap length** (1 to 8 seconds) is the silent wait inside a pattern. Use it to say the sentence aloud, or to think of the answer.
+- **Pause between sentences** (0 to 10 seconds) is extra time after each row, in every pattern, including Normal. The patterns with a gap already add half a second at the end of each row.
+
+If a row has no text in column A, the app reads it in L2 only, so there is never a pointless gap. The **speech speed** slider in Settings applies to everything.
+
+> **Good to know.** The voice you choose in Settings is used for the language you are learning (L2). Your own language (L1) is spoken by your phone's automatic voice for that language.
+
+### Recipe: audiobook with subtitles
+
+The simplest way to use the app.
+
+- **Layout:** one sentence (or short paragraph) per row. Column A holds the translation and column B the original text.
+- **Settings:** pattern **Normal**. Leave **Highlight current sentence** on. If the text is split into chapters, switch on **Speech continues into the next lesson**.
+- **How to use it:** follow the text in the language you are learning while the app reads it. When you are unsure of a line, swipe to your own language to check, then swipe back.
+
+Shorter rows make the highlight, and tapping to jump to a line, more precise.
+
+### Recipe: example sentences
+
+Listen and repeat, which works well for lessons built around example sentences.
+
+- **Layout:** one example sentence per row.
+- **Settings:** pattern **Normal**, with **Pause between sentences** set to between 3 and 5 seconds to begin with. You can also lower the speech speed.
+- **How to use it:** the voice reads a sentence, and you say it aloud in the pause. Adjust the pause until it feels natural.
+
+### Recipe: quizzes
+
+- **Layout:** column A holds the question and column B the answer, one quiz item per row.
+- **Settings:** pattern **L1, gap, L2**, with a gap of 3 to 6 seconds.
+- **What you hear:** the question, a silence in which you answer aloud, then the correct answer.
+
+For the reverse quiz (hear the answer language, translate it in your head) use **L2, gap, L1**.
+
+If both the questions and the answers are in the language you are learning, such as a comprehension question followed by its answer, put them on consecutive rows in column B instead. Use pattern **Normal** and let **Pause between sentences** provide the thinking time.
+
+SwitchReader does not mark answers or keep scores. You judge your own answers, so it works best as a speaking and listening trainer.
+
+### Recipe: grammar explanations with examples
+
+- **Layout:** column B holds the example sentence in the new language, and column A holds the explanation or translation in your own language.
+- **Settings:** pattern **L2, gap, L1, L2**.
+- **What you hear:** the example, a gap, the explanation in your own language, then the example once more.
+
+Having your own language in the loop can make grammar much easier to follow than listening to the new language alone.
+
+### Recipe: vocabulary and phrase drills
+
+- **Layout:** a word or phrase in your own language in column A, and its translation in column B.
+- **Settings:** pattern **L1, gap, L2**, with a short gap of 2 to 3 seconds. Try **L1, gap, L2, L1** if you want the meaning to land once more.
+
+### Recipe: three-language lessons
+
+Only two columns are ever spoken. If you work with three languages, put them in the columns like this:
+
+| Column A | Column B | Column C |
+| --- | --- | --- |
+| Buenos días. | Buongiorno. | Good morning. |
+
+Import it with Spanish as your own language (L1) and Italian as the language you are learning (L2), and switch on **Enable third mode**. The third view then shows the English text for reading.
+
+The patterns **L1 only**, **L1, gap, L2** and **L1, gap, L2, L1** suit this well: you hear the Spanish, say the Italian, hear the Italian, and (in the last one) hear the Spanish again.
+
+The third view is text only and is never spoken. To hear the third language as well, make a second copy of the spreadsheet with a different pair of columns and import that as another lesson.
+
+### Beyond language learning
+
+Anything that comes in a prompt and a response can be a lesson. For a lesson in one language, choose the same language for both L1 and L2 when you import it.
+
+- **Exam revision:** the question in column A and the answer in column B, with pattern **L1, gap, L2**.
+- **Learning lines for a play or a speech:** the other person's cue in column A and your line in column B. Pattern **L1, gap, L2** plays the cue, waits while you say your line, then gives it back to you.
+- **Poetry and memorisation:** the first half of a line in column A and the rest in column B.
+- **Facts to learn:** dates, formulas, names, medical terms, or capital cities, with the prompt in column A and the answer in column B.
+
+## 6. Settings reference
+
+*To be written: every setting in the order it appears, including the third mode, the Japanese particle colouring, the Russian letter colouring and italics, per-language settings and earbuds.*
+
+## 7. Limits and troubleshooting
+
+*To be written: the screen timeout in more detail, earbuds, updates (fully close and reopen), offline use, and what to do when a voice sounds poor or is missing.*
+</script>
+<!-- END GUIDE TEXT -->
+
+<script>
+(function () {
+    "use strict";
+
+    function esc(s) {
+        return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
+
+    function safeUrl(u) {
+        return /^\s*javascript:/i.test(u) ? "#" : u;
+    }
+
+    // Bold, italic, code, links, pictures and {{notes}} inside one line of text.
+    function inline(s) {
+        const codes = [];
+        s = s.replace(/`([^`]+)`/g, function (m, c) { codes.push(c); return "\u0000" + (codes.length - 1) + "\u0000"; });
+        s = esc(s);
+        s = s.replace(/!\[([^\]]*)\]\(([^)\s]+)\)/g, function (m, alt, src) { return '<img src="' + safeUrl(src) + '" alt="' + alt + '">'; });
+        s = s.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, function (m, text, href) { return '<a href="' + safeUrl(href) + '">' + text + "</a>"; });
+        s = s.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+        s = s.replace(/(^|[^*])\*([^*\s][^*]*)\*/g, "$1<em>$2</em>");
+        s = s.replace(/\{\{(.+?)\}\}/g, '<mark class="todo">$1</mark>');
+        s = s.replace(/\u0000(\d+)\u0000/g, function (m, n) { return "<code>" + esc(codes[n]) + "</code>"; });
+        return s;
+    }
+
+    function slug(text, used) {
+        let base = text.toLowerCase().replace(/<[^>]+>/g, "").replace(/[^a-z0-9\u00c0-\u024f\u0400-\u04ff]+/g, "-").replace(/^-+|-+$/g, "") || "section";
+        let id = base, n = 2;
+        while (used[id]) { id = base + "-" + n++; }
+        used[id] = true;
+        return id;
+    }
+
+    const LIST_LINE = /^(\s*)([-*]|\d+\.)\s+(.*)$/;
+    const TABLE_SEP = /^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?\s*$/;
+
+    function splitRow(line) {
+        let t = line.trim();
+        if (t.charAt(0) === "|") t = t.slice(1);
+        if (t.charAt(t.length - 1) === "|") t = t.slice(0, -1);
+        return t.split("|").map(function (c) { return c.trim(); });
+    }
+
+    function renderList(items) {
+        let out = "";
+        const stack = [];
+        items.forEach(function (it) {
+            while (stack.length && it.indent < stack[stack.length - 1].indent) {
+                out += "</li></" + (stack.pop().ordered ? "ol" : "ul") + ">";
+            }
+            if (!stack.length || it.indent > stack[stack.length - 1].indent) {
+                out += "<" + (it.ordered ? "ol" : "ul") + "><li>";
+                stack.push({ indent: it.indent, ordered: it.ordered });
+            } else {
+                out += "</li><li>";
+            }
+            out += inline(it.text);
+        });
+        while (stack.length) out += "</li></" + (stack.pop().ordered ? "ol" : "ul") + ">";
+        return out;
+    }
+
+    function render(md) {
+        const lines = md.replace(/\r\n/g, "\n").split("\n");
+        const used = {};
+        const toc = [];
+        let html = "";
+        let i = 0;
+
+        function startsBlock(line, next) {
+            return /^\s*$/.test(line) || /^#{1,3}\s/.test(line) || /^\s*```/.test(line) || /^>/.test(line) ||
+                   LIST_LINE.test(line) || /^---+\s*$/.test(line) || /^\[\[contents\]\]\s*$/.test(line) ||
+                   (/^\s*\|/.test(line) && next !== undefined && TABLE_SEP.test(next));
+        }
+
+        while (i < lines.length) {
+            const line = lines[i];
+
+            if (/^\s*$/.test(line)) { i++; continue; }
+
+            if (/^\[\[contents\]\]\s*$/.test(line)) { html += "%%TOC%%"; i++; continue; }
+
+            if (/^\s*```/.test(line)) {
+                const body = [];
+                i++;
+                while (i < lines.length && !/^\s*```/.test(lines[i])) { body.push(lines[i]); i++; }
+                i++;
+                html += '<div class="code"><button type="button" class="copy">Copy</button><pre><code>' + esc(body.join("\n")) + "</code></pre></div>";
+                continue;
+            }
+
+            const h = line.match(/^(#{1,3})\s+(.*?)\s*#*\s*$/);
+            if (h) {
+                const level = h[1].length;
+                const text = h[2];
+                const id = slug(text, used);
+                if (level === 2) toc.push({ id: id, text: inline(text) });
+                html += "<h" + level + ' id="' + id + '">' + inline(text) + "</h" + level + ">";
+                i++;
+                continue;
+            }
+
+            if (/^---+\s*$/.test(line)) { html += "<hr>"; i++; continue; }
+
+            if (/^>/.test(line)) {
+                const paras = [[]];
+                while (i < lines.length && /^>/.test(lines[i])) {
+                    const t = lines[i].replace(/^>\s?/, "");
+                    if (/^\s*$/.test(t)) paras.push([]); else paras[paras.length - 1].push(t);
+                    i++;
+                }
+                html += "<blockquote>" + paras.filter(function (p) { return p.length; }).map(function (p) { return "<p>" + inline(p.join(" ")) + "</p>"; }).join("") + "</blockquote>";
+                continue;
+            }
+
+            if (/^\s*\|/.test(line) && i + 1 < lines.length && TABLE_SEP.test(lines[i + 1])) {
+                const head = splitRow(line);
+                i += 2;
+                const rows = [];
+                while (i < lines.length && /^\s*\|/.test(lines[i])) { rows.push(splitRow(lines[i])); i++; }
+                html += '<div class="table-wrap"><table><thead><tr>' +
+                    head.map(function (c) { return "<th>" + inline(c) + "</th>"; }).join("") +
+                    "</tr></thead><tbody>" +
+                    rows.map(function (r) {
+                        return "<tr>" + head.map(function (_, k) { return "<td>" + inline(r[k] || "") + "</td>"; }).join("") + "</tr>";
+                    }).join("") + "</tbody></table></div>";
+                continue;
+            }
+
+            if (LIST_LINE.test(line)) {
+                const items = [];
+                while (i < lines.length) {
+                    const m = lines[i].match(LIST_LINE);
+                    if (m) {
+                        items.push({ indent: m[1].replace(/\t/g, "    ").length, ordered: /\d/.test(m[2]), text: m[3] });
+                        i++;
+                    } else if (/^\s+\S/.test(lines[i]) && items.length) {
+                        items[items.length - 1].text += " " + lines[i].trim();   // wrapped continuation
+                        i++;
+                    } else if (/^\s*$/.test(lines[i]) && i + 1 < lines.length && LIST_LINE.test(lines[i + 1])) {
+                        i++;                                                      // blank line between items
+                    } else {
+                        break;
+                    }
+                }
+                html += renderList(items);
+                continue;
+            }
+
+            const para = [];
+            while (i < lines.length && !startsBlock(lines[i], lines[i + 1])) { para.push(lines[i].trim()); i++; }
+            if (!para.length) { para.push(lines[i].trim()); i++; }
+            html += "<p>" + inline(para.join(" ")) + "</p>";
+        }
+
+        const tocHtml = toc.length
+            ? '<nav class="contents" aria-label="Contents"><ul>' + toc.map(function (t) { return '<li><a href="#' + t.id + '">' + t.text + "</a></li>"; }).join("") + "</ul></nav>"
+            : "";
+        html = html.replace("%%TOC%%", tocHtml);
+        return html + '<p class="back"><a href="#top">Back to the top</a></p>';
+    }
+
+    const source = document.getElementById("guide-source").textContent;
+    const target = document.getElementById("guide");
+    target.id = "guide";
+    target.innerHTML = render(source);
+    const firstHeading = target.querySelector("h1");
+    if (firstHeading) { document.title = firstHeading.textContent; firstHeading.id = "top"; }
+    if (location.hash) {
+        const el = document.getElementById(decodeURIComponent(location.hash.slice(1)));
+        if (el) el.scrollIntoView();
+    }
+
+    target.addEventListener("click", function (event) {
+        const button = event.target.closest(".copy");
+        if (!button) return;
+        const text = button.parentNode.querySelector("code").textContent;
+        const done = function () { button.textContent = "Copied"; setTimeout(function () { button.textContent = "Copy"; }, 1800); };
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(done, function () { button.textContent = "Press and hold to copy"; });
+        } else {
+            button.textContent = "Press and hold to copy";
+        }
+    });
+})();
+</script>
+</body>
+</html>
