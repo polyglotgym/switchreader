@@ -125,7 +125,7 @@
         <button class="icon-btn play" id="tts-toggle" title="Play" aria-label="Play">
             <svg width="22" height="22"><use id="tts-toggle-icon" href="#i-play"/></svg>
         </button>
-        <button type="button" id="mode-label" aria-label="Change display mode">ES</button>
+        <button type="button" id="mode-label" aria-label="Change view">ES</button>
     </div>
 </main>
 
@@ -175,7 +175,7 @@
 
             <label class="toggle-row">
                 <div class="toggle-label">
-                    <div class="toggle-title">Enable third mode</div>
+                    <div class="toggle-title">Enable third view</div>
                     <div class="toggle-hint">Shows the third spreadsheet column (romanised text, notes). Blank where that column is empty.</div>
                 </div>
                 <input type="checkbox" id="third-mode-enabled" class="switch" checked>
@@ -208,7 +208,7 @@
                     <span class="slider-value" id="sentence-pause-value">0.0 s</span>
                 </div>
                 <input type="range" id="sentence-pause" min="0" max="10" step="0.5" value="0">
-                <div class="toggle-hint">Extra time after each sentence, in every mode. The patterns with a gap already include 0.5 s.</div>
+                <div class="toggle-hint">Extra time after each sentence, in every reading pattern. The patterns with a gap already include 0.5 s.</div>
             </div>
 
             <label class="toggle-row">
@@ -269,7 +269,7 @@
             <label class="toggle-row">
                 <div class="toggle-label">
                     <div class="toggle-title">Third view: Russian in italics</div>
-                    <div class="toggle-hint">Russian lessons only (L2 is Russian). The third view shows the Russian text in italics, in place of the third spreadsheet column. Needs "Enable third mode" to be on.</div>
+                    <div class="toggle-hint">Russian lessons only (L2 is Russian). The third view shows the Russian text in italics, in place of the third spreadsheet column. Needs "Enable third view" to be on.</div>
                 </div>
                 <input type="checkbox" id="russian-italics" class="switch">
             </label>
@@ -386,6 +386,15 @@
     <div class="modal-body">
 
         <div class="setting">
+            <label for="import-type">Type</label>
+            <select id="import-type">
+                <option value="language" selected>Language lesson</option>
+                <option value="other">Other (quiz, revision, anything else)</option>
+            </select>
+            <div class="file-hint">Other lessons get their own section on the home screen. For a lesson in one language, choose the same language for both L1 and L2 below.</div>
+        </div>
+
+        <div class="setting">
             <label for="l2-language">Original language (L2)</label>
             <select id="l2-language">
                 <option value="es-ES" selected>Spanish</option>
@@ -425,7 +434,7 @@
             <label for="excel-file" class="file-picker-label" tabindex="0" role="button">Choose file</label>
             <input type="file" id="excel-file" accept=".xlsx,.xls,.csv" hidden>
             <div id="file-name-display" class="file-name">No file selected</div>
-            <div class="file-hint">Column A: translation (L1) · Column B: original (L2) · Column C: third mode, optional (romanised text, notes)</div>
+            <div class="file-hint">Column A: translation (L1) · Column B: original (L2) · Column C: third view, optional (romanised text, notes)</div>
         </div>
 
         <button id="import-confirm-button" class="primary-button" disabled>
@@ -505,7 +514,7 @@
         document.head.appendChild(xlsxFallback);
     }
 </script>
-<script src="app.js?v=44"></script>
+<script src="app.js?v=45"></script>
 
 </body>
 </html>

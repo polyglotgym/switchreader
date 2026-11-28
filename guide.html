@@ -141,6 +141,8 @@ nav.contents li { margin: 0 0 0.35em; }
 
 SwitchReader is a flexible reader for learning languages, and for anything else you want to read, hear, repeat or be quizzed on. Every lesson is a simple spreadsheet. Each row holds one sentence (or short passage) in two languages, and the app lets you read it, hear it, and flip between the languages with a swipe.
 
+If you've ever seen a parallel text, with two different languages side by side, you will get the idea. In SwitchReader, the different languages are accessed by swiping up and down. SwitchReader will also read either or both languages to you in the sequence you choose.
+
 People use it as:
 
 - an **audiobook with subtitles**: read along in the language you are learning, with the translation one swipe away;
@@ -156,7 +158,7 @@ People use it as:
 - **Colour helps you notice.** Optional colouring picks out Japanese particles, and Russian letters that look like English ones.
 - **Simple and private.** There is no account to create. Your lessons stay on your phone, and the app works without internet once it has loaded.
 
-> **Words used in this guide.** **L2** is the language you are learning (the "original" text). **L1** is your own language (the translation). A **row** is one line of your spreadsheet, shown as one sentence in the app. **Third mode** is the optional third view.
+> **Words used in this guide.** **L2** is the language you are learning (the "original" text). **L1** is your own language (the translation). A **row** is one line of your spreadsheet, shown as one sentence in the app. The **view** is what you see on the screen: your own language (the L1 view), the language you are learning (the L2 view), or the optional third view, which shows the third column of your spreadsheet. The **reading pattern** is what the app says aloud, and in what order (section 5). The view and the reading pattern are separate, so you can be looking at one language while the app reads another.
 
 ## 2. Quick start
 
@@ -182,6 +184,8 @@ Set the timeout to **10 minutes** (look for Settings, then Display, then Screen 
 
 > **The trade-off.** A longer timeout means the screen stays lit for longer whenever you leave the phone alone, which uses more battery. Turning the brightness down while you listen helps. You can set the timeout back to normal whenever you are not using the app for long listening.
 
+> **Want to try it first?** The first time you open SwitchReader it contains one sample lesson, *The Dark Room* (Spanish to English). You can open it and try the buttons and swipes described in Step 5 before you make a lesson of your own. If you delete it, it does not come back.
+
 ### Step 3. Make a three-line test lesson
 
 In Google Sheets (or Excel), type this into the first three rows. Column A is your own language, column B is the language you are learning, and column C is left empty for now.
@@ -197,9 +201,10 @@ There is no need for a header row. Save the sheet as a file: in Google Sheets ch
 ### Step 4. Import it
 
 1. On the home screen, tap **Add lesson**.
-2. Set **Original language (L2)** to Spanish, and **Translation language (L1)** to English.
-3. Type a title if you like. If you leave it empty, the file name is used.
-4. Tap **Choose file** and pick your file, then tap **Import lesson**.
+2. Leave **Type** on **Language lesson**. (The other choice is explained in section 3.)
+3. Set **Original language (L2)** to Spanish, and **Translation language (L1)** to English.
+4. Type a title if you like. If you leave it empty, the file name is used.
+5. Tap **Choose file** and pick your file, then tap **Import lesson**.
 
 The lesson now appears on the home screen, grouped under its language.
 
@@ -207,7 +212,7 @@ The lesson now appears on the home screen, grouped under its language.
 
 Tap the lesson to open it. You will see the Spanish. Press the play button at the bottom to hear it. A few things to try straight away:
 
-- **Swipe up or down** to change between your language and the language you are learning. (The third view joins in once you switch on **Enable third mode** in Settings.)
+- **Swipe up or down** to change the view: your own language, the language you are learning, and a third view that shows column C (empty in this test lesson).
 - **Swipe left or right** to turn the page.
 - **Tap a sentence** to choose it.
 
@@ -230,6 +235,17 @@ You will get the most out of SwitchReader by making lessons from what you are ac
 You choose the languages when you import the file, not inside the spreadsheet. The same layout therefore works for every language. At the moment the choices are Spanish, English (UK or US), Italian, Russian, Japanese, French, and Portuguese (European or Brazilian).
 
 If letters look scrambled after importing a CSV file, save it again as **CSV UTF-8**, or use an .xlsx file instead.
+
+### Language lessons and Other lessons
+
+When you import a file you choose its **Type**:
+
+- **Language lesson** (the default) is listed on the home screen under the language you are learning.
+- **Other** is for quizzes, revision, scripts, facts to learn, and anything else that is not a language lesson. Other lessons get their own **Other** section on the home screen, so they do not get mixed up with your real language lessons. When one finishes, **Next lesson** leads only to another Other lesson.
+
+Either way, you still choose a language for L1 and for L2, because the app needs a voice to read each column. For a lesson that is all in one language, choose the same language for both.
+
+The type is chosen when you import and cannot be changed afterwards. To change it, import the file again with the other type and delete the old copy.
 
 ### Rows do not have to be translations
 
@@ -283,8 +299,8 @@ From top to bottom:
 
 - **The gear** at the top right opens Settings.
 - **Continue reading.** If you have a lesson in progress, a card at the top shows the one you read most recently. One tap takes you back to your place. The numbers show the sentence you are on, out of the total.
-- **Language buttons.** *All* shows every lesson, and there is a button for each language you have lessons in. The button with the sliders icon opens **Languages to show**, where you can hide languages you are not working on right now. Hidden languages stay in your library. They just don't appear on this screen.
-- **Your lessons**, grouped under their language, in the order you imported them. Each card shows the title, the two languages (for example Spanish → English) and your progress: **Not started**, a count such as **12 / 40 · 30%**, or **Done**. A tick means you have finished the lesson before. **Next up** marks the first lesson you have not started, once you have begun another lesson in that language.
+- **Language buttons.** *All* shows every lesson, and there is a button for each language you have lessons in, plus an **Other** button once you have an Other lesson. The button with the sliders icon opens **Languages to show**, where you can hide languages you are not working on right now. Hidden languages stay in your library. They just don't appear on this screen.
+- **Your lessons**, grouped under their language (Other lessons have a section of their own), in the order you imported them. Each card shows the title, the two languages (for example Spanish → English) and your progress: **Not started**, a count such as **12 / 40 · 30%**, or **Done**. A tick means you have finished the lesson before. **Next up** marks the first lesson you have not started, once you have begun another lesson in that language.
 - **The options button on each card** opens **Lesson options**, where you can rename or delete the lesson.
 - **Add lesson** at the bottom, which is how you bring in a new spreadsheet (see sections 2 and 3).
 
@@ -296,17 +312,17 @@ The app remembers where you stopped in every lesson, including which view you we
 
 {{SCREENSHOT: the reading screen, with the bottom bar visible}}
 
-**The top bar** has a Home button, which takes you back to the lesson list, and the gear for Settings. The phone's Back button also takes you home from a lesson. On the home screen it does not close the app.
+**The top bar** has a Home button, which takes you back to the lesson list, and the gear for Settings. The phone's Back button also takes you home from a lesson.
 
 **The bottom bar** has three controls:
 
 - **Page number** (left), for example "3 / 12". Tap it to open **Go to page**, where you can type a number, step with the arrows, or jump to the start or the end. On the last screen it says "End".
-- **Play** (middle). It turns into **Stop** while the app is speaking, and into **Continue** after you stop, so you can carry on from the same sentence.
+- **Play** (middle). It turns into **Stop** while the app is speaking, and into **Continue** after you stop. Stopping and restarting will start the audio from the beginning of the sentence. You cannot pause in the middle of a sentence and resume.
 - **View button** (right). It shows which view you are looking at: the code of your own language (for example EN), the code of the language you are learning (for example ES), or **3** for the third view. Tap it to move to the next view. It looks dimmed in the third view when the lesson has nothing to show there.
 
-**Three views.** A lesson can be shown in your own language (L1), in the language you are learning (L2), or as the third view, which shows the third spreadsheet column. The third view only appears once you switch on **Enable third mode** in Settings. The order is L1, then L2, then the third view, then back round again.
+**Views.** What you see on the screen is called the view. There are three: your own language (L1), the language you are learning (L2), and the third view, which shows column C of your spreadsheet. Swipe up or down, or tap the view button, to move round them: L1, then L2, then the third view, then back to L1. The third view is switched on by default. If you never use column C, you can turn it off with **Enable third view** in Settings, and the app will then skip it.
 
-What you see is separate from what you hear. The voice follows the reading pattern (section 5), whichever view is on screen.
+The view is separate from what you hear. The voice follows the reading pattern (section 5), whichever view is on screen. You can read the language you are learning while the app reads your own language aloud, if you wish.
 
 **Swiping and tapping**
 
@@ -320,9 +336,11 @@ What you see is separate from what you hear. The voice follows the reading patte
 
 The reading screen does not scroll by dragging, because dragging is used for turning pages and changing views. If a page has more text than fits, small arrow buttons appear so you can scroll it, and it also scrolls by itself while the app is speaking.
 
+**The highlighted sentence.** On most pages the app shows one sentence on a slightly lighter background. This is the highlighted sentence. It is the sentence being read aloud, and it moves on by itself as the app reads. It is also where **Play** begins: if you press Play, the app starts from the highlighted sentence. A page with only one sentence on it shows no highlight, because there is nothing to pick out. If you prefer a clean screen, turn off **Highlight current sentence** in Settings (it is on by default). The app still keeps its place; you just cannot see it.
+
 **Tapping a sentence.** By default, a tap moves the highlight to that sentence. If the app is speaking, it carries on reading from there. If you switch on **Tapping a sentence starts speech** in Settings, a tap starts speech from that sentence, and a tap on the sentence being read stops it.
 
-**The end of a lesson.** After the last page you see an **End of lesson** card, with **Home**, **Back to start** and, if there is one, **Next lesson** and its title. If you would rather the app rolled straight on into the next lesson, switch on **Speech continues into the next lesson** in Settings.
+**The end of a lesson.** After the last page you see an **End of lesson** card, with **Home**, **Back to start** and, if there is one, **Next lesson** and its title. If you would rather the app rolled straight on into the next lesson, switch on **Speech continues into the next lesson** in Settings. By default the next lesson is the next one you imported in the same language. Language lessons and Other lessons never lead into each other.
 
 > **On a computer.** The app also works with a keyboard. Space plays and stops, **C** changes the view, the left and right arrows turn pages, and the up and down arrows move between sentences.
 
@@ -337,7 +355,7 @@ Choose the pattern in Settings, under Reading. It applies to every lesson.
 | Pattern | What you hear | Good for |
 | --- | --- | --- |
 | Normal: L2 only | The language you are learning | Listening, audiobook-style reading, repeating after the voice |
-| L1 only | Your own language (the first column) | Lessons where both columns are languages you know or are studying (see "Recipe: three-language lessons") |
+| L1 only | Your own language (the first column) | Lessons where both columns are languages you know or are studying (see "Use method: three-language lessons") |
 | L1, gap, L2 | Your language, a silent gap, then the language you are learning | Quizzes and speaking practice: question, your answer, the model answer |
 | L2, gap, L1 | The language you are learning, a gap, then your language | Checking you understood: hear it, think what it means, then hear the meaning |
 | L2, gap, L1, L2 | The language you are learning, a gap, your language, then the language you are learning again | Hear it, understand it, hear it once more |
@@ -352,7 +370,7 @@ If a row has no text in column A, the app reads it in L2 only, so there is never
 
 > **Good to know.** The voice you choose in Settings is used for the language you are learning (L2). Your own language (L1) is spoken by your phone's automatic voice for that language.
 
-### Recipe: audiobook with subtitles
+### Use method: audiobook with subtitles
 
 The simplest way to use the app.
 
@@ -362,7 +380,7 @@ The simplest way to use the app.
 
 Shorter rows make the highlight, and tapping to jump to a line, more precise.
 
-### Recipe: example sentences
+### Use method: example sentences
 
 Listen and repeat, which works well for lessons built around example sentences.
 
@@ -370,7 +388,7 @@ Listen and repeat, which works well for lessons built around example sentences.
 - **Settings:** pattern **Normal**, with **Pause between sentences** set to between 3 and 5 seconds to begin with. You can also lower the speech speed.
 - **How to use it:** the voice reads a sentence, and you say it aloud in the pause. Adjust the pause until it feels natural.
 
-### Recipe: quizzes
+### Use method: quizzes
 
 - **Layout:** column A holds the question and column B the answer, one quiz item per row.
 - **Settings:** pattern **L1, gap, L2**, with a gap of 3 to 6 seconds.
@@ -378,11 +396,13 @@ Listen and repeat, which works well for lessons built around example sentences.
 
 For the reverse quiz (hear the answer language, translate it in your head) use **L2, gap, L1**.
 
+Quizzes about a language (vocabulary, phrases) can stay as language lessons. Quizzes about anything else belong under the **Other** type.
+
 If both the questions and the answers are in the language you are learning, such as a comprehension question followed by its answer, put them on consecutive rows in column B instead. Use pattern **Normal** and let **Pause between sentences** provide the thinking time.
 
 SwitchReader does not mark answers or keep scores. You judge your own answers, so it works best as a speaking and listening trainer.
 
-### Recipe: grammar explanations with examples
+### Use method: grammar explanations with examples
 
 - **Layout:** column B holds the example sentence in the new language, and column A holds the explanation or translation in your own language.
 - **Settings:** pattern **L2, gap, L1, L2**.
@@ -390,12 +410,12 @@ SwitchReader does not mark answers or keep scores. You judge your own answers, s
 
 Having your own language in the loop can make grammar much easier to follow than listening to the new language alone.
 
-### Recipe: vocabulary and phrase drills
+### Use method: vocabulary and phrase drills
 
 - **Layout:** a word or phrase in your own language in column A, and its translation in column B.
 - **Settings:** pattern **L1, gap, L2**, with a short gap of 2 to 3 seconds. Try **L1, gap, L2, L1** if you want the meaning to land once more.
 
-### Recipe: three-language lessons
+### Use method: three-language lessons
 
 Only two columns are ever spoken. If you work with three languages, put them in the columns like this:
 
@@ -403,7 +423,7 @@ Only two columns are ever spoken. If you work with three languages, put them in 
 | --- | --- | --- |
 | Buenos días. | Buongiorno. | Good morning. |
 
-Import it with Spanish as your own language (L1) and Italian as the language you are learning (L2), and switch on **Enable third mode**. The third view then shows the English text for reading.
+Import it with Spanish as your own language (L1) and Italian as the language you are learning (L2), and make sure **Enable third view** is on in Settings (it is on by default). The third view then shows the English text for reading.
 
 The patterns **L1 only**, **L1, gap, L2** and **L1, gap, L2, L1** suit this well: you hear the Spanish, say the Italian, hear the Italian, and (in the last one) hear the Spanish again.
 
@@ -411,7 +431,7 @@ The third view is text only and is never spoken. To hear the third language as w
 
 ### Beyond language learning
 
-Anything that comes in a prompt and a response can be a lesson. For a lesson in one language, choose the same language for both L1 and L2 when you import it.
+Anything that comes in a prompt and a response can be a lesson. When you import it, set **Type** to **Other** and choose the same language for both L1 and L2.
 
 - **Exam revision:** the question in column A and the answer in column B, with pattern **L1, gap, L2**.
 - **Learning lines for a play or a speech:** the other person's cue in column A and your line in column B. Pattern **L1, gap, L2** plays the cue, waits while you say your line, then gives it back to you.
@@ -420,7 +440,7 @@ Anything that comes in a prompt and a response can be a lesson. For a lesson in 
 
 ## 6. Settings reference
 
-*To be written: every setting in the order it appears, including the third mode, the Japanese particle colouring, the Russian letter colouring and italics, per-language settings and earbuds.*
+*To be written: every setting in the order it appears, including the third view, the Japanese particle colouring, the Russian letter colouring and italics, per-language settings and earbuds.*
 
 ## 7. Limits and troubleshooting
 

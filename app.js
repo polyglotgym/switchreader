@@ -2,7 +2,7 @@
 //  SWITCHREADER — parallel-text lesson reader
 // ═══════════════════════════════════════════════════════════════
 
-const APP_BUILD = "2026-11-27d";   // shown at the bottom of Settings: tells you which build is running
+const APP_BUILD = "2026-11-28a";   // shown at the bottom of Settings: tells you which build is running
 let offlineStatusEl = null;        // the small "Offline ready" line under it
 
 // Some browsers have no text-to-speech at all. Remember that, and give the
@@ -231,6 +231,7 @@ const importConfirmButton = document.getElementById("import-confirm-button");
 const fileNameDisplay = document.getElementById("file-name-display");
 const l2LanguageSelect = document.getElementById("l2-language");
 const l1LanguageSelect = document.getElementById("l1-language");
+const importTypeSelect = document.getElementById("import-type");
 
 const readingAreaSection = document.querySelector(".reading-area");
 const readingArea = document.getElementById("reading-text");
@@ -1160,9 +1161,12 @@ const LANGUAGE_INFO = {
     it: { name: "Italian",    color: "#22c55e", soft: "rgba(34, 197, 94, 0.16)" },
     pt: { name: "Portuguese", color: "#eab308", soft: "rgba(234, 179, 8, 0.16)" },
     fr: { name: "French",     color: "#3b82f6", soft: "rgba(59, 130, 246, 0.16)" },
-    en: { name: "English",    color: "#a855f7", soft: "rgba(168, 85, 247, 0.16)" }
+    en: { name: "English",    color: "#a855f7", soft: "rgba(168, 85, 247, 0.16)" },
+    // Lessons imported with the type "Other" (quizzes, revision, anything that is not a
+    // language lesson) form a group of their own, whatever language they are in.
+    other: { name: "Other",    color: "#94a3b8", soft: "rgba(148, 163, 184, 0.16)" }
 };
-const LANGUAGE_ORDER = ["ru", "es", "ja", "it", "pt", "fr", "en"];
+const LANGUAGE_ORDER = ["ru", "es", "ja", "it", "pt", "fr", "en", "other"];
 const FLAG_CLASS = {
     "ru-RU": "flag-ru", "es-ES": "flag-es", "ja-JP": "flag-ja", "it-IT": "flag-it",
     "fr-FR": "flag-fr", "pt-PT": "flag-pt", "pt-BR": "flag-br",
@@ -1171,6 +1175,12 @@ const FLAG_CLASS = {
 
 function languagePrefix(code) {
     return (code || "").split("-")[0].toLowerCase();
+}
+
+// Which group a lesson belongs to on the home screen: its language, or "other".
+// Lessons saved before the types existed have no type, so they stay language lessons.
+function lessonGroup(lesson) {
+    return lesson.type === "other" ? "other" : languagePrefix(lesson.l2Code);
 }
 
 function languageInfo(prefix) {
@@ -1233,7 +1243,7 @@ function lessonStatus(lesson) {
 
 // Languages that have at least one lesson, in a steady order.
 function presentLanguages() {
-    const found = new Set(library.map(l => languagePrefix(l.l2Code)));
+    const found = new Set(library.map(l => lessonGroup(l)));
     const known = LANGUAGE_ORDER.filter(p => found.has(p));
     const others = [...found].filter(p => !LANGUAGE_ORDER.includes(p)).sort();
     return known.concat(others);
@@ -1299,7 +1309,7 @@ function renderLibrary() {
     visible.forEach(prefix => {
         byLanguage[prefix] = library
             .map((lesson, index) => ({ lesson: lesson, index: index }))
-            .filter(entry => languagePrefix(entry.lesson.l2Code) === prefix)
+            .filter(entry => lessonGroup(entry.lesson) === prefix)
             .sort((a, b) => ((a.lesson.createdAt || 0) - (b.lesson.createdAt || 0)) || (a.index - b.index))
             .map(entry => ({ lesson: entry.lesson, status: lessonStatus(entry.lesson) }));
     });
@@ -1323,7 +1333,7 @@ function renderLibrary() {
 
     let html = "";
     if (latest) {
-        const info = languageInfo(languagePrefix(latest.lesson.l2Code));
+        const info = languageInfo(lessonGroup(latest.lesson));
         html += '<button type="button" class="continue-card" data-open="' + escapeHtml(latest.lesson.id) +
             '" style="--c:' + info.color + '">' +
             '<span class="continue-text"><span class="continue-label">Continue reading</span>' +
@@ -1364,7 +1374,7 @@ function renderLibrary() {
 
     libraryList.innerHTML = html;
     libraryList.scrollTop = scrollTop;
-    addLessonLabel.textContent = homeFilter === "all"
+    addLessonLabel.textContent = (homeFilter === "all" || homeFilter === "other")
         ? "Add lesson" : "Add " + languageInfo(homeFilter).name + " lesson";
 }
 
@@ -1389,7 +1399,7 @@ libraryList.addEventListener("click", function(event) {
 function openLanguagesPanel() {
     languagesList.innerHTML = presentLanguages().map(prefix => {
         const info = languageInfo(prefix);
-        const count = library.filter(l => languagePrefix(l.l2Code) === prefix).length;
+        const count = library.filter(l => lessonGroup(l) === prefix).length;
         return '<label class="language-row" style="--c:' + info.color + '">' +
             '<span class="language-dot"></span>' +
             '<span class="language-name">' + escapeHtml(info.name) + '</span>' +
@@ -1468,6 +1478,9 @@ lessonMenuPanel.addEventListener("click", function(event) {
 // When you press "Add lesson" the import screen starts on the right languages:
 // the language you are viewing, otherwise the ones you used last time.
 function applyImportLanguageDefaults() {
+    // Importing from the "Other" section starts with the type set to Other.
+    importTypeSelect.value = (homeFilter === "other") ? "other" : "language";
+
     const hasOption = (select, value) => [...select.options].some(o => o.value === value);
     let l2 = "es-ES";
     let l1 = "en-GB";
@@ -1478,7 +1491,7 @@ function applyImportLanguageDefaults() {
 
     if (homeFilter !== "all") {
         const mine = library
-            .filter(l => languagePrefix(l.l2Code) === homeFilter)
+            .filter(l => lessonGroup(l) === homeFilter)
             .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
         if (mine.length > 0) {
             l2 = mine[0].l2Code;
@@ -1648,6 +1661,7 @@ importConfirmButton.addEventListener("click", async function() {
                   pendingImportFile.name.replace(/\.(xlsx|xls|csv)$/i, "");
     const l2Code = l2LanguageSelect.value;
     const l1Code = l1LanguageSelect.value;
+    const lessonType = importTypeSelect.value;
 
     try {
         const units = await parseExcelFile(pendingImportFile, l2Code, l1Code);
@@ -1668,6 +1682,7 @@ importConfirmButton.addEventListener("click", async function() {
             position: { page: 0, sentence: 0, mode: 2 },
             createdAt: Date.now()
         };
+        if (lessonType === "other") lesson.type = "other";   // no type = a language lesson
 
         library.push(lesson);
         if (!saveLibrary()) {
@@ -1684,9 +1699,9 @@ importConfirmButton.addEventListener("click", async function() {
         } catch (e) {}
 
         // Make sure the lesson you just added is visible on the home screen
-        const importedLanguage = languagePrefix(l2Code);
-        hiddenLanguages.delete(importedLanguage);
-        if (homeFilter !== "all") homeFilter = importedLanguage;
+        const importedGroup = lessonGroup(lesson);
+        hiddenLanguages.delete(importedGroup);
+        if (homeFilter !== "all") homeFilter = importedGroup;
         saveHomeChoices();
 
         importPanel.hidden = true;
@@ -1987,12 +2002,12 @@ function displayPage() {
 
     const l1Short = (currentBook?.l1Code || "").split("-")[0].toUpperCase();
     const l2Short = (currentBook?.l2Code || "").split("-")[0].toUpperCase();
-    const modeLabels = ["3", l1Short, l2Short];   // 3 = third mode
+    const modeLabels = ["3", l1Short, l2Short];   // 3 = the third view
 
     modeLabel.textContent = modeLabels[displayMode] || "";
     modeLabel.classList.toggle("blank", displayMode === 0 && !thirdHasText);   // dim when there is nothing to show
     modeLabel.setAttribute("aria-label",
-        "Display mode: " + (displayMode === 0 ? "third mode" : modeLabels[displayMode]) +
+        "View: " + (displayMode === 0 ? "third view" : modeLabels[displayMode]) +
         ". Activate to change.");
 
     pageNumber.textContent = onEnd ? "End" : `${currentPage + 1} / ${realPageCount()}`;
@@ -2618,6 +2633,8 @@ function findNextLesson() {
     const start = inOrder.findIndex(l => l.id === current.id);
     for (let i = start + 1; i < inOrder.length; i++) {
         const candidate = inOrder[i];
+        // Language lessons and "Other" lessons never lead into each other.
+        if ((candidate.type === "other") !== (current.type === "other")) continue;
         if (!nextSameLanguage || languageOf(candidate.l2Code) === languageOf(current.l2Code)) {
             return candidate;
         }
